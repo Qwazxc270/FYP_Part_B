@@ -1,0 +1,8 @@
+prefix=/home/luke/catkin_ws/install
+
+Name: ros_example_files
+Description: Description of ros_example_files
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

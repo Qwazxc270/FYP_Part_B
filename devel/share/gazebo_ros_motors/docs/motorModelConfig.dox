@@ -1,0 +1,12 @@
+\subsubsection parameters ROS parameters
+
+Reads and maintains the following parameters on the ROS server
+
+- \b "~velocity_noise" : \b [double] Encoder measurement standard deviation min: 0.0, default: 0.0, max: 10.0
+- \b "~motor_nominal_voltage" : \b [double] Motor nominal voltage min: 0.0, default: 12.0, max: 120.0
+- \b "~electric_resistance" : \b [double] Motor electric resistance min: 0.0, default: 1.0, max: 20.0
+- \b "~electric_inductance" : \b [double] Motor electric inductance min: 0.0, default: 0.001, max: 1.0
+- \b "~moment_of_inertia" : \b [double] Motor moment of inertia min: 0.0, default: 0.001, max: 1.0
+- \b "~armature_damping_ratio" : \b [double] Motor armature damping ratio min: 0.0, default: 0.0001, max: 1.0
+- \b "~electromotive_force_constant" : \b [double] Motor electromotive force constant min: 0.0, default: 0.01, max: 1.0
+

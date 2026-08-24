@@ -1,0 +1,2 @@
+gazebo_ros_motors-master:qcar_control:qcar_controlplugin:qcar_gazebo:qcar_guidance:ros_example_files
+-DCATKIN_DEVEL_PREFIX=/home/luke/catkin_ws/devel -DCMAKE_INSTALL_PREFIX=/home/luke/catkin_ws/install -G Unix Makefiles

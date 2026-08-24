@@ -1,0 +1,8 @@
+prefix=/home/luke/catkin_ws/devel
+
+Name: qcar_controlplugin
+Description: Description of qcar_controlplugin
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

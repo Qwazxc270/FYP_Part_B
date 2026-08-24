@@ -1,0 +1,13 @@
+\subsubsection usage Usage
+\verbatim
+<node name="gazebo_ros_motors" pkg="gazebo_ros_motors" type="gazebo_ros_motors">
+  <param name="velocity_noise" type="double" value="0.0" />
+  <param name="motor_nominal_voltage" type="double" value="12.0" />
+  <param name="electric_resistance" type="double" value="1.0" />
+  <param name="electric_inductance" type="double" value="0.001" />
+  <param name="moment_of_inertia" type="double" value="0.001" />
+  <param name="armature_damping_ratio" type="double" value="0.0001" />
+  <param name="electromotive_force_constant" type="double" value="0.01" />
+</node>
+\endverbatim
+
