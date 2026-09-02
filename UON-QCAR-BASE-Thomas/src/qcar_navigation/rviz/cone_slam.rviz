@@ -1,0 +1,178 @@
+Panels:
+  - Class: rviz/Displays
+    Name: Displays
+  - Class: rviz/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    # TF frames
+    - Class: rviz/TF
+      Enabled: true
+      Name: TF
+      Show Arrows: false
+      Show Axes: true
+      Show Names: true
+      Frame Timeout: 15
+      Frames:
+        All Enabled: false
+        base_footprint:
+          Value: true
+        odom:
+          Value: true
+        lidar:
+          Value: true
+        camera_rgb:
+          Value: true
+        camera_rgb_optical:
+          Value: true
+
+    # Robot model
+    - Class: rviz/RobotModel
+      Enabled: true
+      Name: RobotModel
+      Robot Description: robot_description
+
+    # LaserScan
+    - Class: rviz/LaserScan
+      Enabled: true
+      Name: LaserScan
+      Topic: /scan
+      Color Transformer: FlatColor
+      Color: 200; 200; 200
+      Size (m): 0.02
+      Queue Size: 1
+
+    # Raw LiDAR cone detections (blue arrows)
+    - Class: rviz/PoseArray
+      Enabled: true
+      Name: LiDAR Cones
+      Topic: /cone_detections_lidar
+      Color: 85; 170; 255
+      Arrow Length: 0.12
+      Queue Size: 1
+
+    # Raw Depth cone detections (green arrows)
+    - Class: rviz/PoseArray
+      Enabled: true
+      Name: Depth Cones
+      Topic: /cone_detections_depth
+      Color: 85; 255; 85
+      Arrow Length: 0.12
+      Queue Size: 1
+
+    # Fused cone detections (yellow arrows)
+    - Class: rviz/PoseArray
+      Enabled: true
+      Name: Fused Cones
+      Topic: /cone_detections_fused
+      Color: 255; 255; 0
+      Arrow Length: 0.15
+      Queue Size: 1
+
+    # Cone map (world-frame landmarks)
+    - Class: rviz/PoseArray
+      Enabled: true
+      Name: Cone Map
+      Topic: /cone_map
+      Color: 255; 85; 0
+      Arrow Length: 0.18
+      Queue Size: 1
+
+    # Cone map markers (spheres + covariance ellipses)
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Name: Cone Markers
+      Marker Topic: /cone_map_markers
+      Queue Size: 100
+      Namespaces:
+        cones: true
+        cone_covariance: true
+        cone_candidates: true
+
+    # Depth camera point cloud
+    - Class: rviz/PointCloud2
+      Enabled: false
+      Name: DepthCloud
+      Topic: /depth_camera/points
+      Size (m): 0.01
+      Color Transformer: AxisColor
+      Axis: z
+      Queue Size: 1
+
+    # Filtered odometry path
+    - Class: rviz/Odometry
+      Enabled: true
+      Name: Filtered Odom
+      Topic: /odometry/filtered
+      Keep: 200
+      Position Tolerance: 0.05
+      Angle Tolerance: 0.1
+      Queue Size: 1
+
+      # Camera colour detections
+    - Class: rviz/PoseArray
+      Enabled: true
+      Name: Camera Cones (colour)
+      Topic: /cone_detections_colour
+      Color: 255; 255; 255
+      Arrow Length: 0.12
+      Queue Size: 1
+
+    # O3 direction vector arrows (colour-coded blue/yellow/orange)
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Name: Cone Direction Vectors (O3)
+      Marker Topic: /cone_direction_markers
+      Queue Size: 10
+      Namespaces:
+        cone_directions: true
+
+      # Colour-coded camera cone positions
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Name: Camera Cone Colours
+      Marker Topic: /cone_colour_markers
+      Queue Size: 10
+      Namespaces:
+        cone_colours: true
+
+    # Annotated camera debug image
+    - Class: rviz/Image
+      Enabled: true
+      Name: Camera Debug View
+      Image Topic: /camera_cone_debug
+      Queue Size: 1
+      Transport Hint: raw
+
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: odom
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz/MoveCamera
+    - Class: rviz/Select
+    - Class: rviz/Measure
+  Value: true
+  Views:
+    Current:
+      Class: rviz/ThirdPersonFollower
+      Distance: 8
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Name: Current View
+      Near Clip Distance: 0.01
+      Pitch: 1.0
+      Target Frame: base_footprint
+      Value: ThirdPersonFollower (rviz)
+      Yaw: 0
+Window Geometry:
+  Displays:
+    collapsed: false
+  Height: 800
+  Width: 1200
+  X: 0
+  Y: 0

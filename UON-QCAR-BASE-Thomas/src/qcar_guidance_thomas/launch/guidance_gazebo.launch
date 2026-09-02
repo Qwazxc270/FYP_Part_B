@@ -1,0 +1,25 @@
+<launch>
+    <!-- Full Gazebo simulation with THIS package's guidance node.
+
+         Self-contained version: includes the stock Track1Example.launch
+         from qcar_gazebo, but disables/replaces its example guidance node
+         is not possible via include args, so this launch expects a copy of
+         the track launch WITHOUT its guidance node line. See README:
+         either use Track1ExampleThomas.launch (provided in extras/) copied
+         into qcar_gazebo/launch/, or comment out the guidance_node line in
+         the stock Track1Example.launch. -->
+
+    <include file="$(find qcar_gazebo)/launch/Track1ExampleThomas.launch"/>
+
+    <!-- Fix: the URDF defines camera_rgb but NOT the optical child frame
+         that camera_cone_detector_node waits for (default param
+         camera_frame = camera_rgb_optical). Standard optical rotation. -->
+    <node pkg="tf" type="static_transform_publisher" name="camera_optical_tf"
+          args="0 0 0 -1.5707963 0 -1.5707963 camera_rgb camera_rgb_optical 50"/>
+
+    <node name="path_visualizer_node" pkg="qcar_guidance_thomas"
+          type="path_visualizer_node.py" output="screen"/>
+
+    <node name="trajectory_logger_node" pkg="qcar_guidance_thomas"
+          type="trajectory_logger_node.py" output="screen"/>
+</launch>

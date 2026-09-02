@@ -1,0 +1,20 @@
+<launch>
+    <node pkg="qcar_navigation"
+          type="nav_filter_node.py"
+          name="nav_filter_node"
+          output="screen">
+
+        <param name="rear_left_wheel_sign" value="-1.0" />
+        <param name="rear_right_wheel_sign" value="1.0" />
+        <param name="steer_left_sign" value="1.0" />
+        <param name="steer_right_sign" value="1.0" />
+        <param name="imu_yaw_rate_sign" value="1.0" />
+
+        <param name="use_imu_yaw" value="true" />
+        <param name="use_imu_yaw_rate" value="true" />
+        <param name="use_xy_update" value="false" />
+        <param name="use_odom_yaw_for_init" value="true" />
+        <param name="align_imu_to_odom_on_init" value="true" />
+
+    </node>
+</launch>

@@ -1,0 +1,37 @@
+<launch>
+    <arg name="x" default="0"/>
+    <arg name="y" default="0"/>
+    <arg name="z" default="0.1"/>
+    <arg name="roll" default="0"/>
+    <arg name="pitch" default="0"/>
+    <arg name="yaw" default="0"/>
+
+    <param name="robot_description" command="$(find xacro)/xacro $(find qcar_gazebo)/urdf/qcar_model.xacro" />
+    <rosparam file="$(find qcar_controlplugin)/config/qcar_controlplugin.yaml" command="load"/>
+
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher"/>
+
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"
+        respawn="false" output="screen">
+        <remap from="/joint_states" to="/qcar/joint_states" />
+    </node>
+
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="gui" value="true"/>
+        <arg name="verbose" value="false"/>
+    </include>
+
+    <node name="spawn_qcar" pkg="gazebo_ros" type="spawn_model" output="screen"
+        args="-urdf -param robot_description -model qcar
+              -x $(arg x) -y $(arg y) -z $(arg z)
+              -R $(arg roll) -P $(arg pitch) -Y $(arg yaw)"/>
+
+    <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
+        output="screen" ns="/qcar"
+        args="base_fr_controller base_fl_controller joint_state_controller"/>
+
+    <node name="joy_node" pkg="joy" type="joy_node" output="screen"/>
+
+    <node name="joy_teleop" pkg="qcar_navigation" type="joy_teleop.py" output="screen"/>
+
+</launch>

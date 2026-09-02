@@ -1,0 +1,25 @@
+# ---------------------------------------------------------------
+# Guidance tunables (qcar_guidance_thomas)
+# Edit values here -- no code changes needed. Loaded by the launch
+# files via <rosparam command="load">.
+# ---------------------------------------------------------------
+
+max_velocity: 0.5          # top speed on straights (m/s)
+min_velocity: 0.2          # slowest corner speed (m/s)
+creep_velocity: 0.15       # bootstrap speed while track not yet visible (m/s)
+
+min_cones_per_side: 2      # blue AND yellow count needed for full planning
+track_half_width: 1.5      # assumed half track width (m) -- creep mode only
+creep_distance: 1.5        # how far ahead creep mode aims (m)
+
+cone_memory_seconds: 3.0   # how long a cone stays remembered after last seen (s)
+cone_merge_dist: 0.5       # detections closer than this are the same cone (m)
+max_planning_range: 6.0    # ignore remembered cones farther than this (m)
+
+curvature_slowdown: 2.0    # higher = more aggressive slowing in corners
+plan_rate_hz: 2            # replanning frequency (Hz)
+
+# true  -> detections arrive in the car frame (base_footprint), the node
+#          transforms them into the fixed odom frame using odometry (real pipeline)
+# false -> detections are already in a fixed frame (fake publisher test)
+detections_in_car_frame: true

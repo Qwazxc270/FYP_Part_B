@@ -1,0 +1,51 @@
+<launch>
+    <node name="lidar_cone_detector_node" pkg="qcar_navigation"
+          type="lidar_cone_detector_node.py" output="screen">
+        <param name="scan_topic" value="/scan"/>
+        <param name="output_topic" value="/cone_detections_lidar"/>
+        <param name="max_range" value="4.0"/>
+        <param name="min_cluster_points" value="3"/>
+        <param name="min_range" value="0.3"/>
+        <param name="max_cluster_width" value="0.35"/>
+        <param name="debug" value="true"/>
+    </node>
+
+    <node name="depth_cone_detector_node" pkg="qcar_navigation"
+          type="depth_cone_detector_node.py" output="screen">
+        <param name="cloud_topic" value="/depth_camera/points"/>
+        <param name="output_topic" value="/cone_detections_depth"/>
+        <param name="target_frame" value="base_footprint"/>
+        <param name="max_range" value="3.0"/>
+        <param name="debug" value="true"/>
+    </node>
+
+    <node name="ekf_slam_node" pkg="qcar_navigation"
+          type="ekf_slam_node.py" output="screen">
+        <param name="detections_topic" value="/cone_detections_fused"/>
+        <param name="odom_topic" value="/odometry/filtered"/>
+        <param name="map_topic" value="/cone_map"/>
+        <param name="min_range" value="0.3"/>
+        <param name="marker_topic" value="/cone_map_markers"/>
+        <param name="world_frame" value="odom"/>
+        <param name="mahal_gate" value="3.84"/>
+        <param name="euclidean_gate" value="0.8"/>
+        <param name="confirmation_hits" value="4"/>
+        <param name="min_landmark_spacing" value="0.8"/>
+        <param name="use_gazebo_yaw" value="true"/>
+    </node>
+
+    <node name="cone_fusion_node" pkg="qcar_navigation"
+          type="cone_fusion_node.py" output="screen">
+        <param name="lidar_topic" value="/cone_detections_lidar"/>
+        <param name="depth_topic" value="/cone_detections_depth"/>
+        <param name="output_topic" value="/cone_detections_fused"/>
+        <param name="target_frame" value="base_footprint"/>
+        <param name="match_distance" value="0.3"/>
+        <param name="fallback_timeout" value="0.0"/>
+        <param name="debug" value="true"/>
+    </node>
+
+    <node name="rviz" pkg="rviz" type="rviz"
+          args="-d $(find qcar_navigation)/rviz/cone_slam.rviz"
+          output="screen"/>
+</launch>
