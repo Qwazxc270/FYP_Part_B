@@ -150,6 +150,8 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   include("/home/luke/catkin_ws/build/qcar_control/cmake_install.cmake")
   include("/home/luke/catkin_ws/build/qcar_gazebo/cmake_install.cmake")
   include("/home/luke/catkin_ws/build/ros_example_files/cmake_install.cmake")
+  include("/home/luke/catkin_ws/build/qcar_navigation/cmake_install.cmake")
+  include("/home/luke/catkin_ws/build/qcar_guidance_thomas/cmake_install.cmake")
   include("/home/luke/catkin_ws/build/gazebo_ros_motors-master/cmake_install.cmake")
   include("/home/luke/catkin_ws/build/qcar_controlplugin/cmake_install.cmake")
 

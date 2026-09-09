@@ -1,0 +1,48 @@
+[  0%] Built target std_msgs_generate_messages_lisp
+[  0%] Built target std_msgs_generate_messages_py
+[  0%] Built target _qcar_guidance_generate_messages_check_deps_TrajectoryMessage
+[  0%] Built target std_msgs_generate_messages_cpp
+[  0%] Built target std_msgs_generate_messages_eus
+[  0%] Built target std_msgs_generate_messages_nodejs
+[  0%] Built target roscpp_generate_messages_eus
+[  0%] Built target _catkin_empty_exported_target
+[  0%] Built target roscpp_generate_messages_lisp
+[  0%] Built target roscpp_generate_messages_nodejs
+[  0%] Built target roscpp_generate_messages_py
+[  0%] Built target rosgraph_msgs_generate_messages_py
+[  0%] Built target rosgraph_msgs_generate_messages_nodejs
+[  0%] Built target _qcar_control_generate_messages_check_deps_TrajectoryMessage
+[  0%] Built target roscpp_generate_messages_cpp
+[  0%] Built target rosgraph_msgs_generate_messages_lisp
+[  7%] Built target qcar_control_generate_messages_py
+[  7%] Built target rosgraph_msgs_generate_messages_eus
+[  7%] Built target rosgraph_msgs_generate_messages_cpp
+[ 14%] Built target steering_test_node
+[ 21%] Built target motor_test_node
+[ 28%] Built target imu_test_node
+[ 35%] Built target gazebo_ros_joint_motor
+[ 39%] Built target gazebo_ros_motors_gencfg
+[ 42%] Built target qcar_guidance_generate_messages_lisp
+[ 50%] Built target qcar_guidance_generate_messages_py
+[ 53%] Built target qcar_guidance_generate_messages_cpp
+[ 57%] Built target qcar_guidance_generate_messages_nodejs
+[ 64%] Built target qcar_guidance_generate_messages_eus
+[ 67%] Built target qcar_control_generate_messages_cpp
+[ 75%] Built target qcar_control_generate_messages_eus
+[ 78%] Built target qcar_control_generate_messages_nodejs
+[ 82%] Built target qcar_control_generate_messages_lisp
+[ 89%] Built target gazebo_ros_dc_motor
+[ 89%] Built target qcar_guidance_generate_messages
+[ 89%] Built target qcar_control_generate_messages
+[100%] Built target example_control_node
+Base path: /home/luke/catkin_ws
+Source space: /home/luke/catkin_ws/src
+Build space: /home/luke/catkin_ws/build
+Devel space: /home/luke/catkin_ws/devel
+Install space: /home/luke/catkin_ws/install
+####
+#### Running command: "make cmake_check_build_system" in "/home/luke/catkin_ws/build"
+####
+####
+#### Running command: "make -j2 -l2" in "/home/luke/catkin_ws/build"
+####

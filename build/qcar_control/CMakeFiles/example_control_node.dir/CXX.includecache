@@ -22,6 +22,16 @@ ros/builtin_message_traits.h
 ros/message_operations.h
 -
 
+/home/luke/catkin_ws/src/qcar_control/src/classControl.cpp
+ros/ros.h
+/home/luke/catkin_ws/src/qcar_control/src/ros/ros.h
+classControl.h
+/home/luke/catkin_ws/src/qcar_control/src/classControl.h
+cmath
+-
+algorithm
+-
+
 /home/luke/catkin_ws/src/qcar_control/src/classControl.h
 ros/ros.h
 /home/luke/catkin_ws/src/qcar_control/src/ros/ros.h

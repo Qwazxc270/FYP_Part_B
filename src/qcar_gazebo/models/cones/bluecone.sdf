@@ -5,7 +5,7 @@
           <geometry>
             <mesh>
               <scale>1 1 1</scale>
-              <uri>/home/jacob/UON-QCAR-BASE/src/qcar_gazebo/models/cones/bluecone.dae</uri>
+              <uri>/home/ethan/catkin_ws/UON-QCAR-BASE/src/qcar_gazebo/models/cones/bluecone.dae</uri>
             </mesh>
           </geometry>
           <max_contacts>10</max_contacts>
@@ -26,7 +26,7 @@
           <geometry>
             <mesh>
               <scale>1 1 1</scale>
-              <uri>/home/jacob/UON-QCAR-BASE/src/qcar_gazebo/models/cones/bluecone.dae</uri>
+              <uri>/home/ethan/catkin_ws/UON-QCAR-BASE/src/qcar_gazebo/models/cones/bluecone.dae</uri>
             </mesh>
           </geometry>
         </visual>

@@ -1,0 +1,18 @@
+<launch>
+    <!-- Isolated guidance test: fake cones + guidance + visualizer.
+         No Gazebo, no navigation stack needed. Fast iteration loop. -->
+
+    <node name="fake_cone_publisher" pkg="qcar_guidance_thomas"
+          type="fake_cone_publisher.py" output="screen"/>
+
+    <node name="online_guidance_node" pkg="qcar_guidance_thomas"
+          type="online_guidance_node.py" output="screen">
+        <rosparam command="load"
+                  file="$(find qcar_guidance_thomas)/config/guidance_params.yaml"/>
+        <!-- fake publisher sends fixed-frame detections -->
+        <param name="detections_in_car_frame" value="false"/>
+    </node>
+
+    <node name="path_visualizer_node" pkg="qcar_guidance_thomas"
+          type="path_visualizer_node.py" output="screen"/>
+</launch>

@@ -24,6 +24,16 @@
             </camera>
             <plugin name="camera_controller" filename="libgazebo_ros_depth_camera.so">
                 <cameraName>depth_camera</cameraName>
+                <frameName>camera_rgb_optical</frameName>
+           
+
+                <imageTopicName>image_raw</imageTopicName>
+                <cameraInfoTopicName>camera_info</cameraInfoTopicName>
+
+                <depthImageTopicName>depth/image_raw</depthImageTopicName>
+                <depthImageCameraInfoTopicName>depth/camera_info</depthImageCameraInfoTopicName>
+
+                <pointCloudTopicName>points</pointCloudTopicName>
             </plugin>
         </sensor>
     </gazebo>

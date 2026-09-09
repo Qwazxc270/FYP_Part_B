@@ -88,3 +88,7 @@ if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/qcar_guidance" TYPE FILE FILES "/home/luke/catkin_ws/src/qcar_guidance/package.xml")
 endif()
 
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/qcar_guidance" TYPE PROGRAM FILES "/home/luke/catkin_ws/build/qcar_guidance/catkin_generated/installspace/example_guidance_node.py")
+endif()
+

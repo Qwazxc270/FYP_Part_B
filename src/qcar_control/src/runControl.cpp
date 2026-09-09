@@ -8,7 +8,7 @@
 
 #define M_PI 3.14159265358979323846
 
-const int Np = 40;
+const int Np = 60;
 // ----------------- DYNAMICS -----------------
 void qcarDynamics(const std::vector<double>& x,
                   const std::vector<double>& u,
@@ -45,6 +45,52 @@ void qcarDynamics(const std::vector<double>& x,
     x_next[1] = Y   + dt * v * sin(psi);
     x_next[2] = psi + dt * (v / L) * tan(delta);
     x_next[3] = v   + dt * a;
+}
+
+// ----------------- CROSS-TRACK ERROR -----------------
+double getCrossTrackError(double X, double Y, int idx, classControl& controller)
+{
+    double wp_x = controller.getWPX(idx);
+    double wp_y = controller.getWPY(idx);
+
+    int wpSize = controller.getWPVec().size();
+    int next_idx = std::min(idx + 1, wpSize - 1);
+
+    double next_x = controller.getWPX(next_idx);
+    double next_y = controller.getWPY(next_idx);
+
+    double path_dx = next_x - wp_x;
+    double path_dy = next_y - wp_y;
+    double path_len = std::sqrt(path_dx*path_dx + path_dy*path_dy);
+
+    double err_x = X - wp_x;
+    double err_y = Y - wp_y;
+
+    double cross_track = (path_dx * err_y - path_dy * err_x) / path_len;
+    return cross_track;
+}
+
+// ----------------- ALONG-TRACK ERROR -----------------
+double getAlongTrackError(double X, double Y, int idx, classControl& controller)
+{
+    double wp_x = controller.getWPX(idx);
+    double wp_y = controller.getWPY(idx);
+
+    int wpSize = controller.getWPVec().size();
+    int next_idx = std::min(idx + 1, wpSize - 1);
+
+    double next_x = controller.getWPX(next_idx);
+    double next_y = controller.getWPY(next_idx);
+
+    double path_dx = next_x - wp_x;
+    double path_dy = next_y - wp_y;
+    double path_len = std::sqrt(path_dx*path_dx + path_dy*path_dy);
+
+    double err_x = X - wp_x;
+    double err_y = Y - wp_y;
+
+    double along_track = (path_dx * err_x + path_dy * err_y) / path_len;
+    return along_track;
 }
 
 // ----------------- MPC -----------------
@@ -165,6 +211,9 @@ int main(int argc, char **argv)
                 int indexCurrent = qcarController.getNearestIndexForward(state->East, state->North, prevIndex, window);
                 prevIndex = indexCurrent;
 
+                double cte = getCrossTrackError(state->East, state->North, indexCurrent, qcarController);
+                double ate = getAlongTrackError(state->East, state->North, indexCurrent, qcarController);
+
                 // ---- BUILD REFERENCE ----
                 std::vector<std::vector<double>> x_ref(4, std::vector<double>(Np));
                 int wpSize = qcarController.getWPVec().size();
@@ -205,10 +254,16 @@ int main(int argc, char **argv)
                 ros::spinOnce();
                 loop_rate.sleep();
 
+                //std::cout << "[t] " << time
+                          //<< " | omega " << omega
+                          //<< " | delta " << delta
+                          //<< " | throttle " << throttle << "\n";
+                
+                //tracking error mode
                 std::cout << "[t] " << time
-                          << " | omega " << omega
-                          << " | delta " << delta
-                          << " | throttle " << throttle << "\n";
+                    << " | cte " << cte << (cte >= 0 ? " (L)" : " (R)")
+                    << " | ate " << ate << (ate >= 0 ? " (ahead)" : " (behind)")
+                    << " | throttle " << throttle << "\n";
 
                 if(time > qcarController.getWPVec().back() - 1)
                 {

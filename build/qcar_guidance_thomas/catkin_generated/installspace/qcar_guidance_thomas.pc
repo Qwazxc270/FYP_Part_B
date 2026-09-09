@@ -1,0 +1,8 @@
+prefix=/home/luke/catkin_ws/install
+
+Name: qcar_guidance_thomas
+Description: Description of qcar_guidance_thomas
+Version: 0.1.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: rospy std_msgs geometry_msgs nav_msgs visualization_msgs qcar_guidance qcar_navigation
