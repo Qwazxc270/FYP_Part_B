@@ -284,6 +284,22 @@ class NavFilterNode:
         msg.twist.twist.angular.y = 0.0
         msg.twist.twist.angular.z = (v/self.L)*np.tan(delta)
 
+        P = self.ekf.P
+        cov6 = np.zeros((6, 6), dtype=float)
+        cov6[0, 0] = P[0, 0]
+        cov6[0, 1] = P[0, 1]
+        cov6[1, 0] = P[1, 0]
+        cov6[1, 1] = P[1, 1]
+        cov6[0, 5] = P[0, 2]
+        cov6[5, 0] = P[2, 0]
+        cov6[1, 5] = P[1, 2]
+        cov6[5, 1] = P[2, 1]
+        cov6[5, 5] = P[2, 2]
+        cov6[2, 2] = 1e-6
+        cov6[3, 3] = 1e-6
+        cov6[4, 4] = 1e-6
+        msg.pose.covariance = cov6.flatten().tolist()
+
         self.odom_pub.publish(msg)
 
 

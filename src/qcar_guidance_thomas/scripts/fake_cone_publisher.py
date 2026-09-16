@@ -21,6 +21,10 @@ SENSOR_RANGE = 4.0   # cones within this range are "detected" (m)
 CAR_SPEED = 0.3      # fake car speed along the centreline (m/s)
 STEP = 0.8           # centreline sample spacing (m)
 
+def dist2(a, b):
+    """math.dist() is Python 3.8+; this works under Python 2.7 too."""
+    return math.hypot(a[0] - b[0], a[1] - b[1])
+
 
 def make_track():
     centre = []
@@ -73,7 +77,7 @@ def main():
         for cones, colour in ((blue_cones, ConeDetection.BLUE),
                               (yellow_cones, ConeDetection.YELLOW)):
             for (x, y) in cones:
-                if math.dist((car_x, car_y), (x, y)) <= SENSOR_RANGE:
+                if dist2((car_x, car_y), (x, y)) <= SENSOR_RANGE:
                     det = ConeDetection()
                     det.position.x = x
                     det.position.y = y

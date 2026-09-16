@@ -45,4 +45,9 @@
     <!-- Launch Control node -->
     <node name="control_node" pkg="qcar_control" type="example_control_node" output="screen"/>
 
+	<include file="$(find qcar_navigation)/launch/cone_slam.launch"/>
+	<include file="$(find qcar_navigation)/launch/camera_vision.launch">
+        <arg name="debug" value="true"/>
+    </include>
+
 </launch>

@@ -23,3 +23,13 @@ plan_rate_hz: 2            # replanning frequency (Hz)
 #          transforms them into the fixed odom frame using odometry (real pipeline)
 # false -> detections are already in a fixed frame (fake publisher test)
 detections_in_car_frame: true
+
+# --- geometric fallback (v3) -------------------------------------------
+# When colour information is missing or incomplete, split remembered cones
+# into left/right by their lateral offset in the car frame instead of by
+# colour. Needed on Track1 because the 62 deg camera FOV never sees the
+# inner boundary out of the start, so those cones only arrive colourless
+# from lidar.
+use_geometric_fallback: true
+min_ahead: -0.5      # ignore cones further behind the car than this (m)
+max_lateral: 3.0     # ignore cones wider than this from the car centreline (m)

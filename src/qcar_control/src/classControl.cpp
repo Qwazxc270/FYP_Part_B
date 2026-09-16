@@ -23,12 +23,20 @@ void classControl::init_guidSub()
     subGuid = n->subscribe("/qcar/trajectory_topic", 0, &classControl::guidCallback, this);
 }
 
-void classControl::guidCallback(const qcar_control::TrajectoryMessage::ConstPtr& msg)
+void classControl::guidCallback(const qcar_guidance::TrajectoryMessage::ConstPtr& msg)   // was qcar_control::...
 {
     waypoint_times = msg->waypoint_times;
     waypoint_x     = msg->waypoint_x;
     waypoint_y     = msg->waypoint_y;
     velocity       = msg->velocity;
+    newTrajectoryArrived = true;
+}
+
+bool classControl::consumeNewTrajectoryFlag()
+{
+    bool flag = newTrajectoryArrived;
+    newTrajectoryArrived = false;
+    return flag;
 }
 
 // Waypoint accessors
@@ -41,7 +49,7 @@ std::vector<double>& classControl::getWPVec() { return waypoint_times; }
 // Navigation subscriber
 void classControl::init_navSub()
 {
-    subNav = n->subscribe("/odom", 0, &classControl::navCallback, this);
+    subNav = n->subscribe("/odometry/filtered", 0, &classControl::navCallback, this);
 }
 
 void classControl::navCallback(const nav_msgs::Odometry::ConstPtr& msg)
@@ -111,8 +119,9 @@ int classControl::getNearestIndexForward(double X, double Y, int prev_idx, int w
 {
     if(waypoint_x.empty()) return 0;
 
-    int start = prev_idx;
-    int end = std::min((int)waypoint_x.size() - 1, prev_idx + window);
+    int maxIdx = (int)waypoint_x.size() - 1;
+    int start = std::min(prev_idx, maxIdx);   // <-- clamp against the CURRENT trajectory's size
+    int end = std::min(maxIdx, start + window);
 
     double best_dist = std::numeric_limits<double>::max();
     int best_idx = start;
@@ -136,3 +145,6 @@ int classControl::getIndex(double currentTime)
     int idx = std::distance(waypoint_times.begin(), it);
     return std::min(idx, (int)waypoint_times.size() - 1);
 }
+
+
+

@@ -39,4 +39,10 @@
 	<node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
 		output="screen" ns="/qcar" args="base_fr_controller base_fl_controller joint_state_controller"/>
 
+    <!-- Launch Guidance node -->
+    <node name="guidance_node" pkg="qcar_guidance" type="example_guidance_node.py" output="screen"/>
+
+    <!-- Launch Control node -->
+    <node name="control_node" pkg="qcar_control" type="example_control_node" output="screen"/>
+
 </launch>

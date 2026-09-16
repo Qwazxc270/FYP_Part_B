@@ -1,0 +1,431 @@
+Panels:
+  - Class: rviz/Displays
+    Help Height: 78
+    Name: Displays
+    Property Tree Widget:
+      Expanded: ~
+      Splitter Ratio: 0.5
+    Tree Height: 166
+  - Class: rviz/Views
+    Expanded:
+      - /Current View1
+    Name: Views
+    Splitter Ratio: 0.5
+Preferences:
+  PromptSaveOnExit: true
+Toolbars:
+  toolButtonStyle: 2
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz/TF
+      Enabled: true
+      Filter (blacklist): ""
+      Filter (whitelist): ""
+      Frame Timeout: 15
+      Frames:
+        All Enabled: false
+        base:
+          Value: true
+        base_footprint:
+          Value: true
+        camera_csi_back:
+          Value: true
+        camera_csi_front:
+          Value: true
+        camera_csi_left:
+          Value: true
+        camera_csi_right:
+          Value: true
+        camera_rgb:
+          Value: true
+        camera_rgb_optical:
+          Value: true
+        hubfl:
+          Value: true
+        hubfr:
+          Value: true
+        lidar:
+          Value: true
+        odom:
+          Value: true
+        wheelfl:
+          Value: true
+        wheelfr:
+          Value: true
+      Marker Alpha: 1
+      Marker Scale: 1
+      Name: TF
+      Show Arrows: false
+      Show Axes: true
+      Show Names: true
+      Tree:
+        odom:
+          base_footprint:
+            base:
+              camera_csi_back:
+                {}
+              camera_csi_front:
+                {}
+              camera_csi_left:
+                {}
+              camera_csi_right:
+                {}
+              camera_rgb:
+                camera_rgb_optical:
+                  {}
+              hubfl:
+                wheelfl:
+                  {}
+              hubfr:
+                wheelfr:
+                  {}
+              lidar:
+                {}
+      Update Interval: 0
+      Value: true
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        base:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        base_footprint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        camera_csi_back:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        camera_csi_front:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        camera_csi_left:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        camera_csi_right:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        camera_rgb:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        camera_rgb_optical:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hubfl:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        hubfr:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        lidar:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        wheelfl:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        wheelfr:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        wheelrl:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        wheelrr:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Name: RobotModel
+      Robot Description: robot_description
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/LaserScan
+      Color: 200; 200; 200
+      Color Transformer: FlatColor
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: LaserScan
+      Position Transformer: XYZ
+      Queue Size: 1
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.019999999552965164
+      Style: Flat Squares
+      Topic: /scan
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Alpha: 1
+      Arrow Length: 0.11999999731779099
+      Axes Length: 0.30000001192092896
+      Axes Radius: 0.009999999776482582
+      Class: rviz/PoseArray
+      Color: 85; 170; 255
+      Enabled: true
+      Head Length: 0.07000000029802322
+      Head Radius: 0.029999999329447746
+      Name: LiDAR Cones
+      Queue Size: 1
+      Shaft Length: 0.23000000417232513
+      Shaft Radius: 0.009999999776482582
+      Shape: Arrow (Flat)
+      Topic: /cone_detections_lidar
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Arrow Length: 0.11999999731779099
+      Axes Length: 0.30000001192092896
+      Axes Radius: 0.009999999776482582
+      Class: rviz/PoseArray
+      Color: 85; 255; 85
+      Enabled: true
+      Head Length: 0.07000000029802322
+      Head Radius: 0.029999999329447746
+      Name: Depth Cones
+      Queue Size: 1
+      Shaft Length: 0.23000000417232513
+      Shaft Radius: 0.009999999776482582
+      Shape: Arrow (Flat)
+      Topic: /cone_detections_depth
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Arrow Length: 0.15000000596046448
+      Axes Length: 0.30000001192092896
+      Axes Radius: 0.009999999776482582
+      Class: rviz/PoseArray
+      Color: 255; 255; 0
+      Enabled: true
+      Head Length: 0.07000000029802322
+      Head Radius: 0.029999999329447746
+      Name: Fused Cones
+      Queue Size: 1
+      Shaft Length: 0.23000000417232513
+      Shaft Radius: 0.009999999776482582
+      Shape: Arrow (Flat)
+      Topic: /cone_detections_fused
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Arrow Length: 0.18000000715255737
+      Axes Length: 0.30000001192092896
+      Axes Radius: 0.009999999776482582
+      Class: rviz/PoseArray
+      Color: 255; 85; 0
+      Enabled: true
+      Head Length: 0.07000000029802322
+      Head Radius: 0.029999999329447746
+      Name: Cone Map
+      Queue Size: 1
+      Shaft Length: 0.23000000417232513
+      Shaft Radius: 0.009999999776482582
+      Shape: Arrow (Flat)
+      Topic: /cone_map
+      Unreliable: false
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /cone_map_markers
+      Name: Cone Markers
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: AxisColor
+      Decay Time: 0
+      Enabled: false
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: DepthCloud
+      Position Transformer: ""
+      Queue Size: 1
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.009999999776482582
+      Style: Flat Squares
+      Topic: /depth_camera/points
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: false
+    - Angle Tolerance: 0.10000000149011612
+      Class: rviz/Odometry
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 255; 255; 127
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: true
+        Position:
+          Alpha: 0.30000001192092896
+          Color: 204; 51; 204
+          Scale: 1
+          Value: true
+        Value: true
+      Enabled: true
+      Keep: 200
+      Name: Filtered Odom
+      Position Tolerance: 0.05000000074505806
+      Queue Size: 1
+      Shape:
+        Alpha: 1
+        Axes Length: 1
+        Axes Radius: 0.10000000149011612
+        Color: 255; 25; 0
+        Head Length: 0.30000001192092896
+        Head Radius: 0.10000000149011612
+        Shaft Length: 1
+        Shaft Radius: 0.05000000074505806
+        Value: Arrow
+      Topic: /odometry/filtered
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Arrow Length: 0.11999999731779099
+      Axes Length: 0.30000001192092896
+      Axes Radius: 0.009999999776482582
+      Class: rviz/PoseArray
+      Color: 255; 255; 255
+      Enabled: true
+      Head Length: 0.07000000029802322
+      Head Radius: 0.029999999329447746
+      Name: Camera Cones (colour)
+      Queue Size: 1
+      Shaft Length: 0.23000000417232513
+      Shaft Radius: 0.009999999776482582
+      Shape: Arrow (Flat)
+      Topic: /cone_detections_colour
+      Unreliable: false
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /cone_direction_markers
+      Name: Cone Direction Vectors (O3)
+      Namespaces:
+        {}
+      Queue Size: 10
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /cone_colour_markers
+      Name: Camera Cone Colours
+      Namespaces:
+        {}
+      Queue Size: 10
+      Value: true
+    - Class: rviz/Image
+      Enabled: true
+      Image Topic: /camera_cone_debug
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: Camera Debug View
+      Normalize Range: true
+      Queue Size: 1
+      Transport Hint: raw
+      Unreliable: false
+      Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Default Light: true
+    Fixed Frame: odom
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz/MoveCamera
+    - Class: rviz/Select
+    - Class: rviz/Measure
+  Value: true
+  Views:
+    Current:
+      Class: rviz/ThirdPersonFollower
+      Distance: 8
+      Enable Stereo Rendering:
+        Stereo Eye Separation: 0.05999999865889549
+        Stereo Focal Distance: 1
+        Swap Stereo Eyes: false
+        Value: false
+      Field of View: 0.7853981852531433
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.05000000074505806
+      Invert Z Axis: false
+      Name: Current View
+      Near Clip Distance: 0.009999999776482582
+      Pitch: 1
+      Target Frame: base_footprint
+      Yaw: 0
+    Saved: ~
+Window Geometry:
+  Camera Debug View:
+    collapsed: false
+  Displays:
+    collapsed: false
+  Height: 800
+  Hide Left Dock: false
+  Hide Right Dock: false
+  QMainWindow State: 000000ff00000000fd00000001000000000000016a000002c1fc0200000003fb0000002200430061006d006500720061002000440065006200750067002000560069006500770100000041000000b60000001600fffffffb000000100044006900730070006c00610079007301000000fd00000135000000dd00fffffffb0000000a005600690065007700730100000238000000ca000000b000ffffff00000248000002c100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Views:
+    collapsed: false
+  Width: 952
+  X: 0
+  Y: 28

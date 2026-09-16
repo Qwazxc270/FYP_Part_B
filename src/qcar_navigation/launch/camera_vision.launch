@@ -1,0 +1,34 @@
+<launch>
+    <arg name="hardware" default="false"/>
+    <arg name="debug"    default="true"/>
+
+    <node name="camera_cone_detector_node"
+          pkg="qcar_navigation"
+          type="camera_cone_detector_node.py"
+          output="screen"
+          if="$(eval not arg('hardware'))">
+        <rosparam file="$(find qcar_navigation)/config/camera_cone_detector_sim.yaml" command="load"/>
+        <param name="rgb_topic"         value="/front_camera/image_raw"/>
+        <param name="depth_topic"       value="/depth_camera/depth/image_raw"/>
+        <param name="camera_info_topic" value="/front_camera/camera_info"/>
+        <param name="camera_frame"      value="camera_rgb_optical"/>
+        <param name="target_frame"      value="base_footprint"/>
+        <param name="debug"             value="$(arg debug)"/>
+        <param name="sync_slop"         value="0.5"/>
+    </node>
+
+    <node name="camera_cone_detector_node"
+          pkg="qcar_navigation"
+          type="camera_cone_detector_node.py"
+          output="screen"
+          if="$(arg hardware)">
+        <rosparam file="$(find qcar_navigation)/config/camera_cone_detector_hw.yaml" command="load"/>
+        <param name="rgb_topic"         value="/front_camera/image_raw"/>
+        <param name="depth_topic"       value="/depth_camera/depth/image_raw"/>
+        <param name="camera_info_topic" value="/front_camera/camera_info"/>
+        <param name="camera_frame"      value="camera_rgb_optical"/>
+        <param name="target_frame"      value="base_footprint"/>
+        <param name="debug"             value="$(arg debug)"/>
+        <param name="sync_slop"         value="0.5"/>
+    </node>
+</launch>

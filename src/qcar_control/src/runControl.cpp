@@ -208,6 +208,12 @@ int main(int argc, char **argv)
                 States* state = qcarController.getStates();
                 std::vector<double> x0 = {state->East, state->North, state->Psi, state->Vel}; // get current state of car
 
+                if(qcarController.consumeNewTrajectoryFlag())
+                {
+                    prevIndex = 0;      // safe here — since this is a LOCAL online plan, index 0 is always near the car
+                    prev_u = {0.0, 0.0};
+                }
+
                 int indexCurrent = qcarController.getNearestIndexForward(state->East, state->North, prevIndex, window);
                 prevIndex = indexCurrent;
 
@@ -265,11 +271,13 @@ int main(int argc, char **argv)
                     << " | ate " << ate << (ate >= 0 ? " (ahead)" : " (behind)")
                     << " | throttle " << throttle << "\n";
 
-                if(time > qcarController.getWPVec().back() - 1)
-                {
-                    qcarController.command(0,0);
-                    return 0;
-                }
+
+                // removed: no longer meaningful with continuously-replanned trajectories
+                ///if(time > qcarController.getWPVec().back() - 1)
+                ///{
+                    ///qcarController.command(0,0);
+                    ///return 0;
+               /// }
             }
         }
 

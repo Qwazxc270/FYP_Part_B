@@ -1,0 +1,23 @@
+blue_h_lo: 95
+blue_h_hi: 135
+blue_s_lo: 60
+blue_v_lo: 30
+
+yellow_h_lo: 18
+yellow_h_hi: 42
+yellow_s_lo: 70
+yellow_v_lo: 70
+
+orange_h_lo: 3
+orange_h_hi: 22
+orange_s_lo: 90
+orange_v_lo: 60
+
+min_blob_area: 80
+max_blob_area: 60000
+max_aspect_ratio: 3.5
+max_range_m: 6.0
+
+sync_slop: 0.12
+morph_kernel: 7
+debug: true

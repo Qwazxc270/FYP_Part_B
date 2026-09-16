@@ -3,26 +3,34 @@
 Online guidance node -- FYP Part B (Thiha "Thomas" Thet Zaw)
 =============================================================
 
-Plans a local path ONLINE from live fused cone detections, instead of
-loading a pre-known track map (the Part A limitation this fixes).
+Plans a local path ONLINE from live cone detections, instead of loading a
+pre-known track map (the Part A limitation this fixes).
 
 Pipeline position:
-    qcar_navigation (camera+lidar fusion)  -->  THIS NODE  -->  qcar_control
+    qcar_navigation (camera + lidar fusion)  -->  THIS NODE  -->  qcar_control
 
 Subscribes:
     /cone_detections_fused_coloured  (qcar_navigation/ConeDetectionArray)
+        camera-derived detections WITH colour (blue/yellow)
+    /cone_detections_fused           (geometry_msgs/PoseArray)
+        lidar+depth fused detections, NO colour -- fallback so the car can
+        still plan when colour information is missing
     /odometry/filtered               (nav_msgs/Odometry)
+
 Publishes:
     /qcar/trajectory_topic           (qcar_guidance/TrajectoryMessage)
 
-Features:
-  * Cone memory      -- cones persist briefly after last seen and merge
-                        across frames, preventing path jitter on dropouts.
-  * Frame handling   -- detections arriving in the car frame are transformed
-                        into the fixed odom frame before being remembered.
-  * Speed profiling  -- per-waypoint curvature slows the car into corners.
-  * Mode machine     -- CREEP (bootstrap, track not fully visible yet)
-                        <-> TRACK (full midpoint planning).
+Boundary identification has two modes:
+  * COLOUR    -- blue cones are one boundary, yellow the other (preferred)
+  * GEOMETRIC -- when colours are missing or incomplete, split remembered
+                 cones into left/right by the sign of their lateral offset
+                 in the car frame. Works whenever the car is inside the
+                 corridor, and does not care which colour is which.
+
+    Why this matters on Track1: the sim camera has a 62 deg FOV and a 3 m
+    range, and the inner boundary sits at 37-55 deg bearing out of the
+    start, so those cones are never photographed and only ever arrive
+    colourless from lidar. Colour-only planning stalls; geometric does not.
 
 All tunables load from config/guidance_params.yaml via private rosparams.
 """
@@ -33,9 +41,13 @@ import numpy as np
 from scipy.interpolate import interp1d
 from qcar_guidance.msg import TrajectoryMessage
 from qcar_navigation.msg import ConeDetectionArray, ConeDetection
+from geometry_msgs.msg import PoseArray
 from nav_msgs.msg import Odometry
 
-latest_cones = None
+UNKNOWN = -1  # internal marker for a cone with no colour information
+
+latest_cones = None       # ConeDetectionArray (coloured)
+latest_plain = None       # PoseArray (colourless)
 current_x = None
 current_y = None
 current_yaw = None
@@ -58,50 +70,76 @@ class Params:
         self.curvature_slowdown = gp("~curvature_slowdown", 2.0)
         self.plan_rate_hz = gp("~plan_rate_hz", 2)
         self.detections_in_car_frame = gp("~detections_in_car_frame", True)
+        # geometric fallback
+        self.use_geometric_fallback = gp("~use_geometric_fallback", True)
+        self.min_ahead = gp("~min_ahead", -0.5)
+        self.max_lateral = gp("~max_lateral", 3.0)
 
 
 class ConeMemory:
     """Short-term memory of cones in the FIXED (odom) frame.
 
-    Merges repeated sightings of the same cone and forgets cones not seen
-    for cone_memory_seconds, so momentary detection dropouts don't cause
-    the planned path to jitter frame-to-frame.
+    Holds both coloured (camera) and colourless (lidar/depth) detections,
+    merges repeated sightings of the same physical cone, and forgets cones
+    not seen for cone_memory_seconds so momentary dropouts do not make the
+    planned path jitter.
     """
 
     def __init__(self, p):
         self.p = p
         self.cones = []  # dicts: {x, y, colour, last_seen}
 
-    def update(self, detections, now, car_x, car_y, car_yaw):
+    def _to_fixed(self, px, py, car_x, car_y, car_yaw):
+        if not self.p.detections_in_car_frame:
+            return px, py
         cy, sy = math.cos(car_yaw), math.sin(car_yaw)
-        for det in detections:
-            if det.colour not in (ConeDetection.BLUE, ConeDetection.YELLOW):
-                continue
-            if self.p.detections_in_car_frame:
-                # rotate+translate car-frame detection into the odom frame
-                x = car_x + cy * det.position.x - sy * det.position.y
-                y = car_y + sy * det.position.x + cy * det.position.y
-            else:
-                x, y = det.position.x, det.position.y
+        return (car_x + cy * px - sy * py,
+                car_y + sy * px + cy * py)
 
-            merged = False
-            for c in self.cones:
-                if (c['colour'] == det.colour and
-                        math.dist((x, y), (c['x'], c['y'])) < self.p.cone_merge_dist):
-                    c['x'], c['y'] = x, y
-                    c['last_seen'] = now
-                    merged = True
-                    break
-            if not merged:
-                self.cones.append({'x': x, 'y': y,
-                                   'colour': det.colour, 'last_seen': now})
+    def _add(self, x, y, colour, now):
+        for c in self.cones:
+            if math.dist((x, y), (c['x'], c['y'])) >= self.p.cone_merge_dist:
+                continue
+            # same physical cone: merge. A known colour always beats UNKNOWN.
+            if c['colour'] == colour or c['colour'] == UNKNOWN or colour == UNKNOWN:
+                c['x'], c['y'] = x, y
+                c['last_seen'] = now
+                if c['colour'] == UNKNOWN and colour != UNKNOWN:
+                    c['colour'] = colour
+                return
+        self.cones.append({'x': x, 'y': y, 'colour': colour, 'last_seen': now})
+
+    def update(self, coloured, plain, now, car_x, car_y, car_yaw):
+        if coloured is not None:
+            for det in coloured.detections:
+                if det.colour not in (ConeDetection.BLUE, ConeDetection.YELLOW):
+                    continue
+                x, y = self._to_fixed(det.position.x, det.position.y,
+                                      car_x, car_y, car_yaw)
+                self._add(x, y, det.colour, now)
+
+        if plain is not None:
+            for pose in plain.poses:
+                x, y = self._to_fixed(pose.position.x, pose.position.y,
+                                      car_x, car_y, car_yaw)
+                self._add(x, y, UNKNOWN, now)
 
         self.cones = [c for c in self.cones
                       if (now - c['last_seen']) < self.p.cone_memory_seconds]
 
-    def get_sides(self, car_x, car_y):
+    def _in_car_frame(self, c, car_x, car_y, car_yaw):
+        """Return (ahead, lateral) of a remembered cone in the car frame."""
+        dx, dy = c['x'] - car_x, c['y'] - car_y
+        cy, sy = math.cos(car_yaw), math.sin(car_yaw)
+        ahead = cy * dx + sy * dy
+        lateral = -sy * dx + cy * dy    # +ve = car's left
+        return ahead, lateral
+
+    def sides_by_colour(self, car_x, car_y):
         blue, yellow = [], []
         for c in self.cones:
+            if c['colour'] == UNKNOWN:
+                continue
             if math.dist((car_x, car_y), (c['x'], c['y'])) > self.p.max_planning_range:
                 continue
             pt = (c['x'], c['y'])
@@ -110,10 +148,33 @@ class ConeMemory:
         yellow.sort(key=lambda q: math.dist((car_x, car_y), q))
         return blue, yellow
 
+    def sides_by_geometry(self, car_x, car_y, car_yaw):
+        """Split ALL remembered cones (coloured or not) into left/right by the
+        sign of their lateral offset in the car frame. Only cones ahead of the
+        car and not absurdly wide are considered."""
+        left, right = [], []
+        for c in self.cones:
+            ahead, lateral = self._in_car_frame(c, car_x, car_y, car_yaw)
+            if ahead < self.p.min_ahead:
+                continue
+            if abs(lateral) > self.p.max_lateral:
+                continue
+            if math.hypot(ahead, lateral) > self.p.max_planning_range:
+                continue
+            (left if lateral > 0 else right).append((c['x'], c['y']))
+        left.sort(key=lambda q: math.dist((car_x, car_y), q))
+        right.sort(key=lambda q: math.dist((car_x, car_y), q))
+        return left, right
+
 
 def cones_callback(msg):
     global latest_cones
     latest_cones = msg
+
+
+def plain_callback(msg):
+    global latest_plain
+    latest_plain = msg
 
 
 def odom_callback(msg):
@@ -148,52 +209,41 @@ def _resample(path, points_per_metre=8, min_points=3):
     return interp1d(d / d[-1], path, kind='quadratic', axis=1)(alpha)
 
 
-def build_midpoint_path(blue, yellow, car_x, car_y):
-    """TRACK mode: pair nearest blue/yellow cones into midpoints, spline through.
+def build_midpoint_path(side_a, side_b, car_x, car_y):
+    """Pair nearest cones from the two boundaries into midpoints, spline through.
+
+    Works for colour-identified sides (blue/yellow) or geometric sides
+    (left/right) -- the maths does not care which is which.
 
     Nearest-index pairing is a deliberate simple heuristic; Delaunay
     triangulation would be the more robust upgrade (noted as future work).
     """
-    n_pairs = min(len(blue), len(yellow))
+    n_pairs = min(len(side_a), len(side_b))
     pts = [[car_x], [car_y]]
     for i in range(n_pairs):
-        pts[0].append((blue[i][0] + yellow[i][0]) / 2)
-        pts[1].append((blue[i][1] + yellow[i][1]) / 2)
+        pts[0].append((side_a[i][0] + side_b[i][0]) / 2)
+        pts[1].append((side_a[i][1] + side_b[i][1]) / 2)
     return _resample(np.array(pts))
 
 
-def build_creep_path(blue, yellow, car_x, car_y, car_yaw, p):
-    """CREEP mode: not enough of the track visible yet -- nudge forward.
+def build_creep_path(car_x, car_y, car_yaw, p):
+    """CREEP mode: not enough of the track visible yet -- nudge straight ahead.
 
-    Aims toward the assumed track centre offset from whichever cone line IS
-    visible (blue = left boundary, yellow = right boundary, FSAE convention),
-    or straight ahead if nothing usable is visible.
+    Deliberately direction-agnostic: steering off a single visible boundary
+    assumes a left/right colour convention, and if that assumption is wrong
+    at spawn the car curves off the track. Creeping straight reveals both
+    boundaries without betting on it.
 
-    NOTE: the path is linearly interpolated to 6 waypoints (not just
-    start+target). Downstream controllers commonly fit splines through
-    received waypoints, and spline fits need >= 3-4 points -- publishing a
-    2-point path can crash them.
+    Interpolated to 6 waypoints (not just start+target): downstream
+    controllers commonly fit splines through received waypoints, and spline
+    fits need >= 3-4 points -- a 2-point path can crash them.
     """
     fwd = (math.cos(car_yaw), math.sin(car_yaw))
-    right = (math.sin(car_yaw), -math.cos(car_yaw))
-    left = (-right[0], -right[1])
-
-    if blue and not yellow:
-        rx, ry = blue[0]
-        tx = rx + right[0] * p.track_half_width
-        ty = ry + right[1] * p.track_half_width
-    elif yellow and not blue:
-        rx, ry = yellow[0]
-        tx = rx + left[0] * p.track_half_width
-        ty = ry + left[1] * p.track_half_width
-    else:
-        tx = car_x + fwd[0] * p.creep_distance
-        ty = car_y + fwd[1] * p.creep_distance
-
+    tx = car_x + fwd[0] * p.creep_distance
+    ty = car_y + fwd[1] * p.creep_distance
     n = 6
-    xs = np.linspace(car_x, tx, n)
-    ys = np.linspace(car_y, ty, n)
-    return _dedupe(np.array([xs, ys]))
+    return _dedupe(np.array([np.linspace(car_x, tx, n),
+                             np.linspace(car_y, ty, n)]))
 
 
 def path_curvatures(path):
@@ -237,7 +287,6 @@ def build_trajectory_message(path, base_velocity, speeds=None):
 
 
 def main():
-    global latest_cones
     rospy.init_node('online_guidance_node')
     p = Params()
     memory = ConeMemory(p)
@@ -245,51 +294,62 @@ def main():
 
     rospy.Subscriber('/cone_detections_fused_coloured',
                      ConeDetectionArray, cones_callback)
+    rospy.Subscriber('/cone_detections_fused', PoseArray, plain_callback)
     rospy.Subscriber('/odometry/filtered', Odometry, odom_callback)
     traj_pub = rospy.Publisher('/qcar/trajectory_topic',
                                TrajectoryMessage, queue_size=1)
 
-    rospy.loginfo("online_guidance_node started (car_frame_detections=%s)",
-                  p.detections_in_car_frame)
+    rospy.loginfo("online_guidance_node started "
+                  "(car_frame_detections=%s, geometric_fallback=%s)",
+                  p.detections_in_car_frame, p.use_geometric_fallback)
 
     rate = rospy.Rate(p.plan_rate_hz)
     while not rospy.is_shutdown():
-        if latest_cones is None or current_x is None:
+        if current_x is None or (latest_cones is None and latest_plain is None):
             rospy.loginfo_throttle(
                 2, "[%s] Waiting for cone detections and odometry...", mode)
             rate.sleep()
             continue
 
         now = rospy.get_time()
-        memory.update(latest_cones.detections, now,
+        memory.update(latest_cones, latest_plain, now,
                       current_x, current_y, current_yaw)
-        blue, yellow = memory.get_sides(current_x, current_y)
 
-        if (len(blue) >= p.min_cones_per_side and
-                len(yellow) >= p.min_cones_per_side):
+        # prefer colour, fall back to geometry
+        side_a, side_b = memory.sides_by_colour(current_x, current_y)
+        source = "colour"
+        if (p.use_geometric_fallback and
+                (len(side_a) < p.min_cones_per_side or
+                 len(side_b) < p.min_cones_per_side)):
+            g_a, g_b = memory.sides_by_geometry(current_x, current_y, current_yaw)
+            if (len(g_a) >= p.min_cones_per_side and
+                    len(g_b) >= p.min_cones_per_side):
+                side_a, side_b, source = g_a, g_b, "geometry"
+
+        if (len(side_a) >= p.min_cones_per_side and
+                len(side_b) >= p.min_cones_per_side):
             if mode != "TRACK":
-                rospy.loginfo("Mode change: %s -> TRACK", mode)
+                rospy.loginfo("Mode change: %s -> TRACK (%s)", mode, source)
                 mode = "TRACK"
-            path = build_midpoint_path(blue, yellow, current_x, current_y)
+            path = build_midpoint_path(side_a, side_b, current_x, current_y)
             curv = path_curvatures(path)
             speeds = np.clip(
                 p.max_velocity / (1.0 + p.curvature_slowdown * curv),
                 p.min_velocity, p.max_velocity)
             traj_pub.publish(build_trajectory_message(path, p.max_velocity, speeds))
             rospy.loginfo(
-                "[TRACK] %d waypoints | mem: blue=%d yellow=%d | v: %.2f-%.2f m/s",
-                path.shape[1], len(blue), len(yellow),
-                float(np.min(speeds)), float(np.max(speeds)))
+                "[TRACK/%s] %d waypoints | sides: %d/%d | mem %d | v: %.2f-%.2f m/s",
+                source, path.shape[1], len(side_a), len(side_b),
+                len(memory.cones), float(np.min(speeds)), float(np.max(speeds)))
         else:
             if mode != "CREEP":
                 rospy.loginfo("Mode change: %s -> CREEP", mode)
                 mode = "CREEP"
-            path = build_creep_path(blue, yellow,
-                                    current_x, current_y, current_yaw, p)
+            path = build_creep_path(current_x, current_y, current_yaw, p)
             traj_pub.publish(build_trajectory_message(path, p.creep_velocity))
             rospy.loginfo_throttle(
-                2, "[CREEP] nudging forward | mem: blue=%d yellow=%d",
-                len(blue), len(yellow))
+                2, "[CREEP] nudging forward | sides: %d/%d | mem %d",
+                len(side_a), len(side_b), len(memory.cones))
         rate.sleep()
 
 

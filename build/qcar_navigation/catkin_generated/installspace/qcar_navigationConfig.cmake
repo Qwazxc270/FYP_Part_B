@@ -91,9 +91,9 @@ endif()
 # flag project as catkin-based to distinguish if a find_package()-ed project is a catkin project
 set(qcar_navigation_FOUND_CATKIN_PROJECT TRUE)
 
-if(NOT " " STREQUAL " ")
+if(NOT "include " STREQUAL " ")
   set(qcar_navigation_INCLUDE_DIRS "")
-  set(_include_dirs "")
+  set(_include_dirs "include")
   if(NOT " " STREQUAL " ")
     set(_report "Check the issue tracker '' and consider creating a ticket if the problem has not been reported yet.")
   elseif(NOT " " STREQUAL " ")
@@ -156,7 +156,7 @@ foreach(library ${libraries})
     set(lib_path "")
     set(lib "${library}-NOTFOUND")
     # since the path where the library is found is returned we have to iterate over the paths manually
-    foreach(path /home/luke/catkin_ws/install/lib;/home/luke/catkin_ws/devel/lib;/opt/ros/noetic/lib)
+    foreach(path /home/luke/catkin_ws/install/lib;/opt/ros/noetic/lib)
       find_library(lib ${library}
         PATHS ${path}
         NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
@@ -179,7 +179,7 @@ foreach(library ${libraries})
   endif()
 endforeach()
 
-set(qcar_navigation_EXPORTED_TARGETS "")
+set(qcar_navigation_EXPORTED_TARGETS "qcar_navigation_generate_messages_cpp;qcar_navigation_generate_messages_eus;qcar_navigation_generate_messages_lisp;qcar_navigation_generate_messages_nodejs;qcar_navigation_generate_messages_py")
 # create dummy targets for exported code generation targets to make life of users easier
 foreach(t ${qcar_navigation_EXPORTED_TARGETS})
   if(NOT TARGET ${t})
@@ -187,7 +187,7 @@ foreach(t ${qcar_navigation_EXPORTED_TARGETS})
   endif()
 endforeach()
 
-set(depends "")
+set(depends "geometry_msgs;nav_msgs;rospy;sensor_msgs;std_msgs;tf;message_runtime")
 foreach(depend ${depends})
   string(REPLACE " " ";" depend_list ${depend})
   # the package name of the dependency must be kept in a unique variable so that it is not overwritten in recursive calls
@@ -216,7 +216,7 @@ foreach(depend ${depends})
   _list_append_deduplicate(qcar_navigation_EXPORTED_TARGETS ${${qcar_navigation_dep}_EXPORTED_TARGETS})
 endforeach()
 
-set(pkg_cfg_extras "")
+set(pkg_cfg_extras "qcar_navigation-msg-extras.cmake")
 foreach(extra ${pkg_cfg_extras})
   if(NOT IS_ABSOLUTE ${extra})
     set(extra ${qcar_navigation_DIR}/${extra})

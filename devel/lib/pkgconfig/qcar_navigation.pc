@@ -3,6 +3,6 @@ prefix=/home/luke/catkin_ws/devel
 Name: qcar_navigation
 Description: Description of qcar_navigation
 Version: 0.0.0
-Cflags: 
+Cflags: -I/home/luke/catkin_ws/devel/include
 Libs: -L${prefix}/lib 
-Requires: 
+Requires: geometry_msgs nav_msgs rospy sensor_msgs std_msgs tf message_runtime

@@ -45,16 +45,9 @@
     <!-- Launch Control node -->
     <node name="control_node" pkg="qcar_control" type="example_control_node" output="screen"/>
 
-	<node name="nav_filter_node" pkg="qcar_navigation" type="nav_filter_node.py" output="screen"/>
-
-	<node name="cone_mapper_node" pkg="qcar_navigation" type="cone_mapper_node.py" output="screen">
-        <remap from="/cone_detections_relative" to="/cone_detections_lidar" />
-    </node>
-
-	<!-- <node name="gazebo_cone_detector_node" pkg="qcar_navigation" type="gazebo_cone_detector_node.py" output="screen"/> -->
-
-	<node name="lidar_cone_detector_node" pkg="qcar_navigation" type="lidar_cone_detector_node.py" output="screen"/>
-
-	
+	<include file="$(find qcar_navigation)/launch/cone_slam.launch"/>
+	<include file="$(find qcar_navigation)/launch/camera_vision.launch">
+        <arg name="debug" value="true"/>
+    </include>
 
 </launch>

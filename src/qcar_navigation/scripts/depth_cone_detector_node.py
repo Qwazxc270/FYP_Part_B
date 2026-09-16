@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
-import math
 import rospy
 import numpy as np
-
+import tf
+import tf.transformations as tft
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs import point_cloud2
 from geometry_msgs.msg import PoseArray, Pose
+
 
 class DepthConeDetectorNode:
     def __init__(self):
@@ -14,20 +15,25 @@ class DepthConeDetectorNode:
 
         self.cloud_topic = rospy.get_param("~cloud_topic", "/depth_camera/points")
         self.output_topic = rospy.get_param("~output_topic", "/cone_detections_depth")
+        self.target_frame = rospy.get_param("~target_frame", "base_footprint")
 
-        self.min_x = rospy.get_param("~min_x", 0.2)
-        self.max_x = rospy.get_param("~max_x", 3.5)
-        self.max_abs_y = rospy.get_param("~max_abs_y", 3.0)
+        # Strong crop in base frame
+        self.min_x = rospy.get_param("~min_x", 0.3)
+        self.max_x = rospy.get_param("~max_x", 4.0)
+        self.max_abs_y = rospy.get_param("~max_abs_y", 2.5)
+        self.min_z = rospy.get_param("~min_z", 0.03)
+        self.max_z = rospy.get_param("~max_z", 0.50)
 
-        self.min_z = rospy.get_param("~min_z", 0.02)
-        self.max_z = rospy.get_param("~max_z", 0.25)
+        # Fast coarse grouping
+        self.grid_size = rospy.get_param("~grid_size", 0.20)
+        self.min_points_per_cell = rospy.get_param("~min_points_per_cell", 4)
 
-        self.cluster_tolerance = rospy.get_param("~cluster_tolerance", 0.1)
-        self.min_cluster_size = rospy.get_param("~min_cluster_size", 12)
-        self.max_cluster_size = rospy.get_param("~max_cluster_size", 250)
+        # Downsample input
+        self.point_stride = rospy.get_param("~point_stride", 8)
 
-        self.min_cluster_width = rospy.get_param("~min_cluster_width", 0.04)
-        self.max_cluster_width = rospy.get_param("~max_cluster_width", 0.2)
+        self.debug = rospy.get_param("~debug", True)
+
+        self.tf_listener = tf.TransformListener()
 
         self.pub = rospy.Publisher(self.output_topic, PoseArray, queue_size=1)
         rospy.Subscriber(self.cloud_topic, PointCloud2, self.cloud_callback, queue_size=1)
@@ -35,94 +41,109 @@ class DepthConeDetectorNode:
         rospy.loginfo("depth_cone_detector_node started")
 
     def cloud_callback(self, msg):
+        source_frame = msg.header.frame_id
+
         raw_points = []
+        total_points = 0
 
-        for p in point_cloud2.read_points(msg, field_names=("x","y","z"), skip_nans=True):
-            x, y, z = p
+        for i, p in enumerate(point_cloud2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True)):
+            total_points += 1
 
-            if x < self.min_x or x> self.max_x:
-                continue
-            if abs(y) > self.max_abs_y:
-                continue
-            if z < self.min_z or z > self.max_z:
+            if (i % self.point_stride) != 0:
                 continue
 
-            raw_points.append([x, y, z])
+            raw_points.append([p[0], p[1], p[2]])
 
         if not raw_points:
             self.publish_pose_array([], msg.header.stamp)
             return
 
-        points = np.array(raw_points, dtype=float)
+        pts_cam = np.array(raw_points, dtype=float)
 
-        xy = points[:, :2]
+        if not source_frame:
+            # sensor not fully initialised yet (empty frame_id) -- skip
+            return
 
-        clusters = self.euclidean_clusters(xy, self.cluster_tolerance)
+
+        try:
+            self.tf_listener.waitForTransform(
+                self.target_frame,
+                source_frame,
+                rospy.Time(0),
+                rospy.Duration(0.1)
+            )
+            trans, rot = self.tf_listener.lookupTransform(
+                self.target_frame,
+                source_frame,
+                rospy.Time(0)
+            )
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+            rospy.logwarn_throttle(1.0, "Depth detector TF lookup failed: %s -> %s", source_frame, self.target_frame)
+            self.publish_pose_array([], msg.header.stamp)
+            return
+
+        T = tft.quaternion_matrix(rot)
+        T[0:3, 3] = np.array(trans)
+
+        pts_h = np.hstack([pts_cam, np.ones((pts_cam.shape[0], 1))])
+        pts_base = (T @ pts_h.T).T[:, :3]
+
+        mask = (
+            (pts_base[:, 0] >= self.min_x) &
+            (pts_base[:, 0] <= self.max_x) &
+            (np.abs(pts_base[:, 1]) <= self.max_abs_y) &
+            (pts_base[:, 2] >= self.min_z) &
+            (pts_base[:, 2] <= self.max_z)
+        )
+        pts_base = pts_base[mask]
+
+        if self.debug:
+            rospy.loginfo_throttle(
+                1.0,
+                "depth fast: total=%d sampled=%d filtered=%d",
+                total_points,
+                len(raw_points),
+                pts_base.shape[0],
+            )
+
+        if pts_base.shape[0] == 0:
+            self.publish_pose_array([], msg.header.stamp)
+            return
+
+        # Simple grid-based grouping instead of expensive clustering
+        xy = pts_base[:, :2]
+        cell_dict = {}
+
+        for pt in xy:
+            cx = int(np.floor(pt[0] / self.grid_size))
+            cy = int(np.floor(pt[1] / self.grid_size))
+            key = (cx, cy)
+            if key not in cell_dict:
+                cell_dict[key] = []
+            cell_dict[key].append(pt)
 
         detections = []
-
-        for cluster_idx in clusters:
-            if len(cluster_idx) < self.min_cluster_size or len(cluster_idx) > self.max_cluster_size:
-                continue 
-
-            cluster_pts = points[cluster_idx]
-            cluster_xy = cluster_pts[:, :2]
-
-            min_xyz = np.min(cluster_pts, axis=0)
-            max_xyz = np.max(cluster_pts, axis=0)
-
-            height = float(max_xyz[2] - min_xyz[2])
-
-            if height < 0.03 or height > 0.35:
+        for pts in cell_dict.values():
+            if len(pts) < self.min_points_per_cell:
                 continue
-
-            min_xy = np.min(cluster_xy, axis=0)
-            max_xy = np.max(cluster_xy, axis=0)
-            size_xy = max_xy - min_xy
-            width = float(np.linalg.norm(size_xy))
-
-            if width < self.min_cluster_width or width > self.max_cluster_width:
-                continue
-
-            center = np.mean(cluster_xy, axis=0)
+            pts_arr = np.array(pts, dtype=float)
+            center = np.mean(pts_arr, axis=0)
             detections.append(center)
 
+        if self.debug:
+            rospy.loginfo_throttle(
+                1.0,
+                "depth fast: cells=%d detections=%d",
+                len(cell_dict),
+                len(detections),
+            )
+
         self.publish_pose_array(detections, msg.header.stamp)
-
-    def euclidean_clusters(self, xy_points, tol):
-        n = len(xy_points)
-        visited = np.zeros(n, dtype=bool)
-        cluster = []
-        clusters = []
-
-        for i in range(n):
-            if visited[i]:
-                continue
-            
-
-            queue = [i]
-            visited[i] = True
-            cluster = []
-
-            while queue:
-                idx = queue.pop()
-                cluster.append(idx)
-
-                dists = np.linalg.norm(xy_points - xy_points[idx], axis=1)
-                neighbors = np.where((dists <= tol) & (~visited))[0]
-
-                for nb in neighbors:
-                    visited[nb] = True
-                    queue.append(nb)
-
-            clusters.append(cluster)
-
-        return clusters
 
     def publish_pose_array(self, detections, stamp):
         msg = PoseArray()
         msg.header.stamp = stamp if stamp != rospy.Time() else rospy.Time.now()
-        msg.header.frame_id = "base_footprint"
+        msg.header.frame_id = self.target_frame
 
         for center in detections:
             pose = Pose()

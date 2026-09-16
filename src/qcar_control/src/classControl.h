@@ -3,7 +3,7 @@
 
 #include "ros/ros.h"
 #include <vector>
-#include "qcar_control/TrajectoryMessage.h"
+#include "qcar_guidance/TrajectoryMessage.h"   // was qcar_control/TrajectoryMessage.h
 #include "std_msgs/Float64.h"
 #include "std_msgs/Float32.h"
 #include "nav_msgs/Odometry.h"
@@ -31,7 +31,8 @@ public:
     int getNearestIndex(double X, double Y);
     int getNearestIndexForward(double X, double Y, int prev_idx, int window);
     void command(double omega, double delta);
-
+    bool consumeNewTrajectoryFlag();
+     
 private:
     ros::NodeHandle* n;
     ros::Subscriber subGuid;
@@ -55,11 +56,12 @@ private:
     States qcarStates;
 
     void init_guidSub();
-    void guidCallback(const qcar_control::TrajectoryMessage::ConstPtr& msg);
+    void guidCallback(const qcar_guidance::TrajectoryMessage::ConstPtr& msg);   // was qcar_control::...
     void init_navSub();
     void navCallback(const nav_msgs::Odometry::ConstPtr& msg);
     double quat_to_rad(double x, double y, double z, double w);
     void init_cmdPub();
+    bool newTrajectoryArrived = false;
 };
 
 #endif
