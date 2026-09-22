@@ -6,7 +6,7 @@
 #include <limits>
 #include "classControl.h"
 
-
+// declaring varibles global
 #define M_PI 3.14159265358979323846
 const double rw     = 0.033;
 const double gr     = (13.0/70.0) * (19.0/37.0);
@@ -17,7 +17,7 @@ const double V_max  = 11.1;
 const double m      = 2.7;
 const double c_drag = 0.5;
 const double L      = 0.256;
-
+// horizon for control, Np * 0.01 is the amount of seconds forward it "sees"
 const int Np = 120;
 // ----------------- DYNAMICS -----------------
 void qcarDynamics(const std::vector<double>& x,
@@ -46,6 +46,26 @@ void qcarDynamics(const std::vector<double>& x,
     x_next[1] = Y   + dt * v * sin(psi);
     x_next[2] = psi + dt * (v / L) * tan(delta);
     x_next[3] = v   + dt * a;
+}
+
+// ----------------- Find Speed ------------------------
+
+double getLocalSpeed(int idx, classControl& controller)
+{
+    int wpSize = controller.getWPVec().size();
+    int next_idx = std::min(idx + 1, wpSize - 1);
+
+    if(next_idx == idx) return controller.getVel();   // fallback: at the last waypoint, no segment to measure
+
+    double dx = controller.getWPX(next_idx) - controller.getWPX(idx);
+    double dy = controller.getWPY(next_idx) - controller.getWPY(idx);
+    double dist = std::sqrt(dx*dx + dy*dy);
+
+    double dt_wp = controller.getWPT(next_idx) - controller.getWPT(idx);
+
+    if(dt_wp < 1e-6) return controller.getVel();   // fallback: avoid divide-by-zero on duplicate/zero-length timestamps
+
+    return dist / dt_wp;
 }
 
 // ----------------- CROSS-TRACK ERROR -----------------
@@ -241,8 +261,10 @@ int main(int argc, char **argv)
                 double v_desired = u[2];        // one-step-ahead predicted velocity
                 prev_u = {u[0], u[1]};          
 
-                
-                double omega = x_ref[3][0] / rw;
+                // speed out
+
+                double local_speed = getLocalSpeed(indexCurrent, qcarController);
+                double omega = (throttle * local_speed) / rw;
 
                 qcarController.command(omega, delta);
 
@@ -253,16 +275,20 @@ int main(int argc, char **argv)
                 
                 //change which data is being pushed to the console
                 std::cout << "[t] " << time
-                          << " | omega " << omega
-                          << " | delta " << delta
-                          << " | speed [m/s] " << omega * rw << "\n";
+                         << " | omega " << omega
+                         << " | delta " << delta
+                         << " | speed [m/s] " << omega * rw << "\n";
                 
                 //tracking error mode
                 //std::cout << "[t] " << time
                  //   << " | cte " << cte << (cte >= 0 ? " (L)" : " (R)")
                  //   << " | ate " << ate << (ate >= 0 ? " (ahead)" : " (behind)")
                   //<< " | speed [m/s] " << omega * rw << "\n";
-
+                // testing 
+                //std::cout << "[t] " << time
+                 //   << " | v_ref " << local_speed
+                  //  << " | v_measured " << state->Vel << "\n"
+                  //  << " | cte " << cte << "\n";
 
                 // removed: no longer meaningful with continuously-replanned trajectories
                 ///if(time > qcarController.getWPVec().back() - 1)
