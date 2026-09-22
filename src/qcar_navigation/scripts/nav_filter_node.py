@@ -38,7 +38,7 @@ class NavEKF:
 
         self.Q = np.diag([0.03**2, 0.03**2, np.deg2rad(1)**2, 0.1**2])
 
-        self.R = np.diag([np.deg2rad(0.8)**2, 0.03**2])
+        self.R = np.diag([0.0654**2, 0.03**2])  # measured QCar gyro noise
 
         self.yaw_rate_meas = 0.0
         self.v_meas = 0.0
@@ -153,14 +153,14 @@ class NavEKF:
 
         x[0, 0] = X + v*np.cos(psi)*dt
         x[1, 0] = Y + v*np.sin(psi)*dt
-        x[2, 0] = WrapToPi(psi + (v/L)*np.tan(delta)*dt)
+        x[2, 0] = WrapToPi(psi + self.yaw_rate_meas*dt)  # NO-CHEAT: heading from gyro
         x[3, 0] = v + a*dt
 
 
         F_Jac = np.array([
             [1, 0, -v*np.sin(psi)*dt, np.cos(psi)*dt],
             [0, 1, v*np.cos(psi)*dt, np.sin(psi)*dt],
-            [0, 0, 1, (1/L)*np.tan(delta)*dt],
+            [0, 0, 1, 0],
             [0, 0, 0, 1]
         ])
 
@@ -355,8 +355,7 @@ class NavFilterNode:
             self.ekf.ekfPredict(u, dt, self.L)
             self.ekf.ekfUpdate(delta, self.L)
 
-            yaw_meas = self.odom_to_yaw(self.latest_odom)
-            self.ekf.ekfUpdateYaw(yaw_meas, self.R_yaw_abs)
+            # NO-CHEAT: Gazebo ground-truth yaw update removed
            
 
             rospy.loginfo_throttle(

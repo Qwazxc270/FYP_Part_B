@@ -139,7 +139,7 @@ class EkfSlam(object):
         # Propagate vehicle state
         x[0, 0] = X + v * np.cos(psi) * dt
         x[1, 0] = Y + v * np.sin(psi) * dt
-        x[2, 0] = wrap_to_pi(psi + (v / L) * np.tan(delta) * dt)
+        x[2, 0] = wrap_to_pi(psi + self.yaw_rate_meas * dt)  # NO-CHEAT: heading from gyro
         x[3, 0] = v + a * dt
 
         # Full-state Jacobian (landmarks are identity)
@@ -148,7 +148,7 @@ class EkfSlam(object):
         F[0, 3] = np.cos(psi) * dt
         F[1, 2] = v * np.cos(psi) * dt
         F[1, 3] = np.sin(psi) * dt
-        F[2, 3] = (1.0 / L) * np.tan(delta) * dt
+        F[2, 3] = 0.0
 
         # Process noise (only vehicle block)
         Q = np.zeros((n, n))
@@ -157,12 +157,8 @@ class EkfSlam(object):
         self.x = x
         self.P = mm(F, P, F.T) + Q
 
-        for i in range(self.n_landmarks):
-            j = self.NV + 2*i
-            self.P[j, j] = min(self.P[j, j], 1.0)
-            self.P[j+1, j+1] = min(self.P[j+1, j+1], 1.0)
-            self.P[:self.NV, j:j+2] = 0.0
-            self.P[j:j+2, :self.NV] = 0.0
+        # Vehicle-landmark cross-covariance is KEPT: it is what lets a
+        # re-observed cone correct the car's heading and position.
 
     # ------------------------------------------------------------------
     # IMU + wheel-speed update
@@ -502,6 +498,7 @@ class EkfSlamNode(object):
         self.landmark_last_obs_time = []
         self.landmark_hits = []
         self.landmark_max_age = 30.0
+        self._pose_hist = []  # (t, x, y, psi), last ~2 s
 
         # ---- subscribers ----
         rospy.Subscriber("/imu", Imu, self._imu_cb)
@@ -597,9 +594,23 @@ class EkfSlamNode(object):
                                  self.slam.x[1, 0]], dtype=float)
         vpsi = self.slam.x[2, 0]
 
+        # Detections arrive ~0.4 s after capture. Move them from the car
+        # frame at capture time into the car frame now, using the filter's
+        # own recent motion, so turning does not bias the bearings.
+        ts = msg.header.stamp.to_sec()
+        if self._pose_hist and ts > 0.0:
+            h = min(self._pose_hist, key=lambda e: abs(e[0] - ts))
+            x0, y0, p0 = h[1], h[2], h[3]
+        else:
+            x0, y0, p0 = self.slam.x[0, 0], self.slam.x[1, 0], vpsi
+        x1, y1, p1 = self.slam.x[0, 0], self.slam.x[1, 0], vpsi
+        c0, s0, c1, s1 = np.cos(p0), np.sin(p0), np.cos(p1), np.sin(p1)
+
         for pose in msg.poses:
-            bx = pose.position.x
-            by = pose.position.y
+            wx = x0 + c0 * pose.position.x - s0 * pose.position.y
+            wy = y0 + s0 * pose.position.x + c0 * pose.position.y
+            bx = c1 * (wx - x1) + s1 * (wy - y1)
+            by = -s1 * (wx - x1) + c1 * (wy - y1)
             rng = np.sqrt(bx ** 2 + by ** 2)
 
             if rng < self.min_range or rng > self.max_range:
@@ -810,6 +821,9 @@ class EkfSlamNode(object):
     # Publish filtered odometry
     # ------------------------------------------------------------------
     def _publish_odom(self, stamp, delta):
+        self._pose_hist.append((stamp.to_sec(), self.slam.x[0, 0], self.slam.x[1, 0], self.slam.x[2, 0]))
+        if len(self._pose_hist) > 100:
+            del self._pose_hist[0]
         msg = Odometry()
         msg.header.stamp = stamp
         msg.header.frame_id = "odom"
@@ -876,7 +890,7 @@ class EkfSlamNode(object):
                 ConeDetection.YELLOW: (1.0, 0.9, 0.0),
                 ConeDetection.ORANGE: (1.0, 0.4, 0.0),
             }
-            m.color.r, m.color.g, m.color.b = colour_map.get(winner, (1.0, 0.5, 0.0))
+            m.color.r, m.color.g, m.color.b = colour_map.get(winner, (0.6, 0.6, 0.6))
             markers.markers.append(m)
 
             # Covariance ellipse
@@ -978,7 +992,7 @@ class EkfSlamNode(object):
             if self.use_gazebo_yaw and self.latest_odom is not None:
                 yaw_meas = self._odom_to_yaw(self.latest_odom)
                 self.slam.update_yaw(yaw_meas, self.R_yaw_abs)
-            elif not self.use_gazebo_yaw and self.imu_yaw_ready:
+            elif False and self.imu_yaw_ready:  # NO-CHEAT: IMU absolute orientation not used
                 self.slam.update_yaw(self.imu_yaw, np.deg2rad(1.0) ** 2)
 
             # (cone observation updates happen in _detections_cb)
@@ -995,6 +1009,31 @@ class EkfSlamNode(object):
 
             self._publish_odom(now, delta)
             rate.sleep()
+
+
+# ----------------------------------------------------------------------
+# Thread safety: rospy runs each subscriber callback in its own thread,
+# separate from run(). Without a lock, a landmark can be added/removed in
+# _detections_cb while run() is mid-predict, giving x/P size mismatches
+# ("size 60 is different from 62"). One re-entrant lock serialises every
+# read/write of the SLAM state.
+# ----------------------------------------------------------------------
+import threading
+SLAM_LOCK = threading.RLock()
+
+
+def _locked(fn):
+    def wrapper(*args, **kwargs):
+        with SLAM_LOCK:
+            return fn(*args, **kwargs)
+    wrapper.__name__ = fn.__name__
+    return wrapper
+
+
+for _name in ("predict", "update_imu", "update_yaw"):
+    setattr(EkfSlam, _name, _locked(getattr(EkfSlam, _name)))
+for _name in ("_detections_cb", "_colour_cb", "_publish_odom", "_publish_map"):
+    setattr(EkfSlamNode, _name, _locked(getattr(EkfSlamNode, _name)))
 
 
 if __name__ == "__main__":

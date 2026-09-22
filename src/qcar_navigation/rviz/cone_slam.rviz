@@ -269,7 +269,7 @@ Visualization Manager:
       Marker Topic: /cone_map_markers
       Name: Cone Markers
       Namespaces:
-        {}
+        cone_candidates: true
       Queue Size: 100
       Value: true
     - Alpha: 1
@@ -369,7 +369,7 @@ Visualization Manager:
       Queue Size: 10
       Value: true
     - Class: rviz/Image
-      Enabled: true
+      Enabled: false
       Image Topic: /camera_cone_debug
       Max Value: 1
       Median window: 5
@@ -379,6 +379,14 @@ Visualization Manager:
       Queue Size: 1
       Transport Hint: raw
       Unreliable: false
+      Value: false
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /guidance_path_marker
+      Name: Marker
+      Namespaces:
+        guidance_path: true
+      Queue Size: 100
       Value: true
   Enabled: true
   Global Options:
@@ -395,7 +403,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 8
+      Distance: 8.960000038146973
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -403,8 +411,8 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0
-        Y: 0
+        X: 4.211008071899414
+        Y: 1.0527619123458862
         Z: 0
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
@@ -417,15 +425,15 @@ Visualization Manager:
     Saved: ~
 Window Geometry:
   Camera Debug View:
-    collapsed: false
+    collapsed: true
   Displays:
-    collapsed: false
+    collapsed: true
   Height: 800
-  Hide Left Dock: false
+  Hide Left Dock: true
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd00000001000000000000016a000002c1fc0200000003fb0000002200430061006d006500720061002000440065006200750067002000560069006500770100000041000000b60000001600fffffffb000000100044006900730070006c00610079007301000000fd00000135000000dd00fffffffb0000000a005600690065007700730100000238000000ca000000b000ffffff00000248000002c100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000001000000000000016a000002c1fc0200000003fb0000002200430061006d006500720061002000440065006200750067002000560069006500770000000041000000b60000001600fffffffb000000100044006900730070006c00610079007300000000fd00000135000000dd00fffffffb0000000a005600690065007700730000000238000000ca000000b000ffffff000003b8000002c100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Views:
-    collapsed: false
+    collapsed: true
   Width: 952
   X: 0
   Y: 28

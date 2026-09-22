@@ -25,7 +25,7 @@
 	<!-- Launch the Gazebo World -->
 	<include file="$(find gazebo_ros)/launch/empty_world.launch">	    
 		<arg name="world_name" value="$(find qcar_gazebo)/worlds/Track1.world"/>	    
-		<arg name="gui" value="true"/>	
+		<arg name="gui" value="false"/>	
 		<arg name="verbose" value="true" />  
 	</include>	
 
@@ -40,14 +40,22 @@
 		output="screen" ns="/qcar" args="base_fr_controller base_fl_controller joint_state_controller"/>
 
     <!-- Launch Guidance node -->
-    <node name="guidance_node" pkg="qcar_guidance_thomas" type="online_guidance_node.py" output="screen"><rosparam command="load" file="$(find qcar_guidance_thomas)/config/guidance_params.yaml"/></node>
+    <node name="guidance_node" pkg="qcar_guidance_thomas" type="online_guidance_node.py" output="screen"><remap from="/odometry/filtered" to="/odometry/local"/><rosparam command="load" file="$(find qcar_guidance_thomas)/config/guidance_params.yaml"/></node>
 
     <!-- Launch Control node -->
-    <node name="control_node" pkg="qcar_control" type="example_control_node" output="screen"/>
+    <node name="control_node" pkg="qcar_control" type="example_control_node" output="screen"><remap from="/odometry/filtered" to="/odometry/local"/></node>
 
 	<include file="$(find qcar_navigation)/launch/cone_slam.launch"/>
 	<include file="$(find qcar_navigation)/launch/camera_vision.launch">
         <arg name="debug" value="true"/>
     </include>
+
+    <!-- Smooth local odometry (wheels + IMU, no landmark corrections) for
+         guidance and control. EKF-SLAM landmark updates make its pose jump
+         5-18 cm sideways every ~1.6 s, which corrupts local planning. -->
+    <group>
+        <remap from="/odometry/filtered" to="/odometry/local"/>
+        <include file="$(find qcar_navigation)/launch/EKF_navigation.launch"/>
+    </group>
 
 </launch>

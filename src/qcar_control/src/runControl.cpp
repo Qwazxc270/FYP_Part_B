@@ -211,7 +211,7 @@ int main(int argc, char **argv)
                 if(qcarController.consumeNewTrajectoryFlag())
                 {
                     prevIndex = 0;      // safe here — since this is a LOCAL online plan, index 0 is always near the car
-                    prev_u = {0.0, 0.0};
+                    // prev_u = {0.0, 0.0};  // disabled: reset snapped throttle to 0 on every replan
                 }
 
                 int indexCurrent = qcarController.getNearestIndexForward(state->East, state->North, prevIndex, window);

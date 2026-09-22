@@ -37,6 +37,7 @@ All tunables load from config/guidance_params.yaml via private rosparams.
 
 import rospy
 import math
+from collections import deque
 import numpy as np
 from scipy.interpolate import interp1d
 from qcar_guidance.msg import TrajectoryMessage
@@ -51,6 +52,7 @@ latest_plain = None       # PoseArray (colourless)
 current_x = None
 current_y = None
 current_yaw = None
+pose_history = deque(maxlen=500)  # (stamp_sec, x, y, yaw), ~10 s at 50 Hz
 
 
 class Params:
@@ -74,6 +76,8 @@ class Params:
         self.use_geometric_fallback = gp("~use_geometric_fallback", True)
         self.min_ahead = gp("~min_ahead", -0.5)
         self.max_lateral = gp("~max_lateral", 3.0)
+        self.max_link = gp("~max_link", 1.6)
+        self.max_link_turn_deg = gp("~max_link_turn_deg", 45.0)
 
 
 class ConeMemory:
@@ -135,36 +139,116 @@ class ConeMemory:
         lateral = -sy * dx + cy * dy    # +ve = car's left
         return ahead, lateral
 
-    def sides_by_colour(self, car_x, car_y):
-        blue, yellow = [], []
-        for c in self.cones:
-            if c['colour'] == UNKNOWN:
+    def _chain(self, points, seed, heading):
+        """Grow one boundary from seed: repeatedly add the nearest unused
+        point within max_link that continues roughly forward."""
+        chain = [seed]
+        used = {seed}
+        d = heading
+        while True:
+            tail = chain[-1]
+            best, best_d = None, float('inf')
+            for q in points:
+                if q in used:
+                    continue
+                vx, vy = q[0] - tail[0], q[1] - tail[1]
+                dist = math.hypot(vx, vy)
+                if dist < 1e-6 or dist > self.p.max_link:
+                    continue
+                cos_turn = (vx * d[0] + vy * d[1]) / dist
+                if cos_turn < math.cos(math.radians(self.p.max_link_turn_deg)):
+                    continue
+                score = dist + 0.5 * math.acos(max(-1.0, min(1.0, cos_turn)))
+                if score < best_d:
+                    best, best_d = q, score
+            if best is None:
+                return chain
+            used.add(best)
+            vx, vy = best[0] - tail[0], best[1] - tail[1]
+            n = math.hypot(vx, vy)
+            d = (vx / n, vy / n)
+            chain.append(best)
+
+    def sides_by_colour(self, car_x, car_y, car_yaw):
+        """Blue and yellow boundaries, each chained along the track from the
+        nearest same-colour cone beside/ahead of the car. Chaining drops
+        remembered cones that are behind the car or belong to a different
+        part of the track across the infield."""
+        heading = (math.cos(car_yaw), math.sin(car_yaw))
+        result = []
+        for colour in (ConeDetection.BLUE, ConeDetection.YELLOW):
+            pts, seeds = [], []
+            for c in self.cones:
+                if c['colour'] != colour:
+                    continue
+                if math.dist((car_x, car_y), (c['x'], c['y'])) > self.p.max_planning_range:
+                    continue
+                pt = (c['x'], c['y'])
+                pts.append(pt)
+                ahead, lateral = self._in_car_frame(c, car_x, car_y, car_yaw)
+                if ahead >= self.p.min_ahead and abs(lateral) <= self.p.max_lateral:
+                    seeds.append(pt)
+            if not seeds:
+                result.append([])
                 continue
-            if math.dist((car_x, car_y), (c['x'], c['y'])) > self.p.max_planning_range:
-                continue
-            pt = (c['x'], c['y'])
-            (blue if c['colour'] == ConeDetection.BLUE else yellow).append(pt)
-        blue.sort(key=lambda q: math.dist((car_x, car_y), q))
-        yellow.sort(key=lambda q: math.dist((car_x, car_y), q))
-        return blue, yellow
+            seed = min(seeds, key=lambda q: math.dist((car_x, car_y), q))
+            result.append(self._chain(pts, seed, heading))
+        return result[0], result[1]
 
     def sides_by_geometry(self, car_x, car_y, car_yaw):
-        """Split ALL remembered cones (coloured or not) into left/right by the
-        sign of their lateral offset in the car frame. Only cones ahead of the
-        car and not absurdly wide are considered."""
-        left, right = [], []
+        """Split cones into left/right boundaries by CHAINING along the track.
+        Seeds are the nearest cone each side of the car; each boundary then
+        grows to the nearest unused cone within max_link that continues
+        roughly forward, so outer cones on bends stay on the correct side."""
+        pool = []
         for c in self.cones:
             ahead, lateral = self._in_car_frame(c, car_x, car_y, car_yaw)
             if ahead < self.p.min_ahead:
                 continue
-            if abs(lateral) > self.p.max_lateral:
-                continue
             if math.hypot(ahead, lateral) > self.p.max_planning_range:
                 continue
-            (left if lateral > 0 else right).append((c['x'], c['y']))
-        left.sort(key=lambda q: math.dist((car_x, car_y), q))
-        right.sort(key=lambda q: math.dist((car_x, car_y), q))
-        return left, right
+            pool.append(((c['x'], c['y']), ahead, lateral))
+        lefts = [t for t in pool if t[2] > 0 and abs(t[2]) <= self.p.max_lateral]
+        rights = [t for t in pool if t[2] < 0 and abs(t[2]) <= self.p.max_lateral]
+        if not lefts or not rights:
+            return [], []
+        seed_l = min(lefts, key=lambda t: math.hypot(t[1], t[2]))[0]
+        seed_r = min(rights, key=lambda t: math.hypot(t[1], t[2]))[0]
+        pts = [t[0] for t in pool]
+        used = {seed_l, seed_r}
+        heading = (math.cos(car_yaw), math.sin(car_yaw))
+        chains = [[seed_l], [seed_r]]
+        dirs = [heading, heading]
+        active = [True, True]
+        while any(active):
+            for k in (0, 1):
+                if not active[k]:
+                    continue
+                tail = chains[k][-1]
+                d = dirs[k]
+                best, best_d = None, float('inf')
+                for q in pts:
+                    if q in used:
+                        continue
+                    vx, vy = q[0] - tail[0], q[1] - tail[1]
+                    dist = math.hypot(vx, vy)
+                    if dist < 1e-6 or dist > self.p.max_link:
+                        continue
+                    cos_turn = (vx * d[0] + vy * d[1]) / dist
+                    if cos_turn < math.cos(math.radians(self.p.max_link_turn_deg)):
+                        continue
+                    score = dist + 0.5 * math.acos(max(-1.0, min(1.0, cos_turn)))
+                    if score < best_d:
+                        best, best_d = q, score
+                if best is None:
+                    active[k] = False
+                    continue
+                used.add(best)
+                vx, vy = best[0] - tail[0], best[1] - tail[1]
+                n = math.hypot(vx, vy)
+                dirs[k] = (vx / n, vy / n)
+                chains[k].append(best)
+        return chains[0], chains[1]
 
 
 def cones_callback(msg):
@@ -184,6 +268,21 @@ def odom_callback(msg):
     q = msg.pose.pose.orientation
     current_yaw = math.atan2(2 * (q.w * q.z + q.x * q.y),
                              1 - 2 * (q.y * q.y + q.z * q.z))
+    stamp = msg.header.stamp.to_sec()
+    if stamp <= 0.0:
+        stamp = rospy.get_time()
+    pose_history.append((stamp, current_x, current_y, current_yaw))
+
+
+def pose_at(msg):
+    """Car pose when a detection message was captured (its header stamp).
+    Detections arrive ~0.4 s late; placing them with the CURRENT pose while
+    turning shifts every remembered cone sideways and creates ghost rows."""
+    stamp = msg.header.stamp.to_sec() if msg is not None else 0.0
+    if stamp <= 0.0 or not pose_history:
+        return current_x, current_y, current_yaw
+    best = min(pose_history, key=lambda h: abs(h[0] - stamp))
+    return best[1], best[2], best[3]
 
 
 def _dedupe(path):
@@ -209,20 +308,25 @@ def _resample(path, points_per_metre=8, min_points=3):
     return interp1d(d / d[-1], path, kind='quadratic', axis=1)(alpha)
 
 
-def build_midpoint_path(side_a, side_b, car_x, car_y):
-    """Pair nearest cones from the two boundaries into midpoints, spline through.
-
-    Works for colour-identified sides (blue/yellow) or geometric sides
-    (left/right) -- the maths does not care which is which.
-
-    Nearest-index pairing is a deliberate simple heuristic; Delaunay
-    triangulation would be the more robust upgrade (noted as future work).
-    """
-    n_pairs = min(len(side_a), len(side_b))
+def build_midpoint_path(side_a, side_b, car_x, car_y, car_yaw):
+    """Pair each cone on the shorter side with its NEAREST cone on the other
+    side, skip midpoints behind the car, then spline through them in order."""
+    if len(side_a) <= len(side_b):
+        short, other = side_a, side_b
+    else:
+        short, other = side_b, side_a
+    cy, sy = math.cos(car_yaw), math.sin(car_yaw)
     pts = [[car_x], [car_y]]
-    for i in range(n_pairs):
-        pts[0].append((side_a[i][0] + side_b[i][0]) / 2)
-        pts[1].append((side_a[i][1] + side_b[i][1]) / 2)
+    started = False
+    for q in short:
+        o = min(other, key=lambda r: math.dist(q, r))
+        mx, my = (q[0] + o[0]) / 2.0, (q[1] + o[1]) / 2.0
+        if not started:
+            if cy * (mx - car_x) + sy * (my - car_y) <= 0.2:
+                continue
+            started = True
+        pts[0].append(mx)
+        pts[1].append(my)
     return _resample(np.array(pts))
 
 
@@ -312,18 +416,19 @@ def main():
             continue
 
         now = rospy.get_time()
-        memory.update(latest_cones, latest_plain, now,
-                      current_x, current_y, current_yaw)
+        if latest_cones is not None:
+            memory.update(latest_cones, None, now, *pose_at(latest_cones))
+        if latest_plain is not None:
+            memory.update(None, latest_plain, now, *pose_at(latest_plain))
 
         # prefer colour, fall back to geometry
-        side_a, side_b = memory.sides_by_colour(current_x, current_y)
+        side_a, side_b = memory.sides_by_colour(current_x, current_y, current_yaw)
         source = "colour"
-        if (p.use_geometric_fallback and
-                (len(side_a) < p.min_cones_per_side or
-                 len(side_b) < p.min_cones_per_side)):
+        if p.use_geometric_fallback:
             g_a, g_b = memory.sides_by_geometry(current_x, current_y, current_yaw)
-            if (len(g_a) >= p.min_cones_per_side and
-                    len(g_b) >= p.min_cones_per_side):
+            # colour chains stop wherever the camera has not coloured a cone,
+            # so use geometry whenever it sees more of the shorter boundary
+            if min(len(g_a), len(g_b)) > min(len(side_a), len(side_b)):
                 side_a, side_b, source = g_a, g_b, "geometry"
 
         if (len(side_a) >= p.min_cones_per_side and
@@ -331,7 +436,13 @@ def main():
             if mode != "TRACK":
                 rospy.loginfo("Mode change: %s -> TRACK (%s)", mode, source)
                 mode = "TRACK"
-            path = build_midpoint_path(side_a, side_b, current_x, current_y)
+            path = build_midpoint_path(side_a, side_b, current_x, current_y, current_yaw)
+            if path.shape[1] < 4 or float(np.sum(np.hypot(np.diff(path[0]), np.diff(path[1])))) < 1.0:
+                rospy.logwarn_throttle(
+                    1, "[TRACK] degenerate path (%d pts) - keeping previous trajectory",
+                    path.shape[1])
+                rate.sleep()
+                continue
             curv = path_curvatures(path)
             speeds = np.clip(
                 p.max_velocity / (1.0 + p.curvature_slowdown * curv),

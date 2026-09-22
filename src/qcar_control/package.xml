@@ -67,4 +67,5 @@
     <!-- Other tools can request additional information be placed here -->
 
   </export>
+  <depend>qcar_guidance</depend>
 </package>

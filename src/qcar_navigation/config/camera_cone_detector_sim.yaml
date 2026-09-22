@@ -3,13 +3,13 @@ blue_h_hi: 130
 blue_s_lo: 80
 blue_v_lo: 50
 
-yellow_h_lo: 20
+yellow_h_lo: 15
 yellow_h_hi: 38
 yellow_s_lo: 80
 yellow_v_lo: 80
 
 orange_h_lo: 5
-orange_h_hi: 20
+orange_h_hi: 14
 orange_s_lo: 100
 orange_v_lo: 80
 

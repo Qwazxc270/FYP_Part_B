@@ -42,6 +42,7 @@ class ConeFusionNode(object):
         self.output_topic = rospy.get_param("~output_topic", "/cone_detections_fused")
         self.target_frame = rospy.get_param("~target_frame", "base_footprint")
         self.match_distance = rospy.get_param("~match_distance", 0.3)
+        self.max_depth_detections = rospy.get_param("~max_depth_detections", 30)
         self.sync_slop = rospy.get_param("~sync_slop", 0.15)
         self.debug = rospy.get_param("~debug", True)
 
@@ -182,8 +183,33 @@ class ConeFusionNode(object):
     # ------------------------------------------------------------------
     # Core fusion logic
     # ------------------------------------------------------------------
+    def _dedupe_points(self, pts, radius=0.25):
+        """Merge detections closer than radius into one (their average).
+        The depth detector often reports the same cone 2+ times per frame;
+        without this every extra copy is passed on as another cone.
+        radius must stay below the tightest cone spacing (~0.5 m)."""
+        groups = []  # [sum_xy, count]
+        for p in pts:
+            for g in groups:
+                if np.linalg.norm(g[0] / g[1] - p) <= radius:
+                    g[0] = g[0] + p
+                    g[1] += 1
+                    break
+            else:
+                groups.append([np.array(p, dtype=float), 1])
+        return [g[0] / g[1] for g in groups]
+
     def fuse(self, lidar_pts, depth_pts):
         """Nearest-neighbour fusion: match lidar<->depth, keep unmatched from both."""
+        if len(depth_pts) > self.max_depth_detections:
+            # Car pitching makes the depth detector see the ground as
+            # 100+ "cones". A real frame has ~15 at most, so drop the
+            # whole depth frame and use lidar only.
+            rospy.logwarn_throttle(
+                1.0, "fusion: ignoring depth frame with %d detections (limit %d)",
+                len(depth_pts), self.max_depth_detections)
+            depth_pts = []
+        depth_pts = self._dedupe_points(depth_pts)
         fused = []
         used_depth = set()
 
@@ -210,6 +236,8 @@ class ConeFusionNode(object):
         for j, dp in enumerate(depth_pts):
             if j not in used_depth:
                 fused.append(dp)
+
+        fused = self._dedupe_points(fused)
 
 
         return fused
