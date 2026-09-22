@@ -1,14 +1,12 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>qcar_guidance_thomas</name>
-  <version>0.1.0</version>
+  <version>0.5.0</version>
   <description>
-    Online guidance for the QCar (FYP Part B, Thomas).
-    Plans a local midpoint path online from fused cone detections,
-    with cone memory, curvature-based speed profiling and a
-    CREEP/TRACK mode state machine.
+    Online guidance for the QCar (FYP Part B, Thomas). Mapping lap: local
+    planning from live cone detections. Race laps: minimum-curvature racing
+    line from the SLAM cone map with a physics-based speed profile.
   </description>
-
   <maintainer email="thiha.thetzaw@uon.edu.au">Thiha Thet Zaw</maintainer>
   <license>MIT</license>
 
@@ -21,4 +19,8 @@
   <depend>visualization_msgs</depend>
   <depend>qcar_guidance</depend>
   <depend>qcar_navigation</depend>
+
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-scipy</exec_depend>
+  <exec_depend>rospkg</exec_depend>
 </package>

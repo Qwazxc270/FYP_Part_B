@@ -1,0 +1,49 @@
+Panels:
+  - Class: rviz/Displays
+    Name: Displays
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz/Grid
+      Name: Grid
+      Enabled: true
+      Cell Size: 1
+      Plane Cell Count: 40
+    - Class: rviz/MarkerArray
+      Name: Track cones (truth)
+      Enabled: true
+      Marker Topic: /fake_sim/cones
+    - Class: rviz/MarkerArray
+      Name: SLAM cone map
+      Enabled: true
+      Marker Topic: /cone_map_markers
+    - Class: rviz/Marker
+      Name: Car
+      Enabled: true
+      Marker Topic: /fake_sim/car
+    - Class: rviz/Marker
+      Name: Planned path (green)
+      Enabled: true
+      Marker Topic: /guidance_path_marker
+    - Class: rviz/Marker
+      Name: Race line (magenta)
+      Enabled: true
+      Marker Topic: /guidance_race_line
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: odom
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz/MoveCamera
+  Views:
+    Current:
+      Class: rviz/TopDownOrtho
+      Name: Current View
+      Scale: 30
+      X: 0
+      Y: 3
+Window Geometry:
+  Height: 800
+  Width: 1200

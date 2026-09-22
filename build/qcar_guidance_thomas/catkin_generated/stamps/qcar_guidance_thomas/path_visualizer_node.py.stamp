@@ -1,41 +1,37 @@
 #! /usr/bin/env python3
 """
-Path visualizer -- republishes the guidance trajectory as an RViz Marker.
+path_visualizer_node -- the current trajectory as an RViz line (green).
 
-Add a Marker display in RViz on topic /guidance_path_marker to see the
-planned path as a green line strip alongside Ethan's cone markers.
+RViz: Add -> By topic -> /guidance_path_marker (Marker). The optimised race
+line is published separately by the guidance node on /guidance_race_line
+(magenta) once lap 1 is complete.
 """
-
 import rospy
-from qcar_guidance.msg import TrajectoryMessage
-from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
+from visualization_msgs.msg import Marker
+from qcar_guidance.msg import TrajectoryMessage
 
 pub = None
+FRAME = 'odom'
 
 
 def traj_callback(msg):
     m = Marker()
-    m.header.frame_id = "odom"
+    m.header.frame_id = FRAME
     m.header.stamp = rospy.Time.now()
-    m.ns = "guidance_path"
-    m.id = 0
-    m.type = Marker.LINE_STRIP
-    m.action = Marker.ADD
+    m.ns, m.id = 'guidance_path', 0
+    m.type, m.action = Marker.LINE_STRIP, Marker.ADD
     m.scale.x = 0.05
-    m.color.g = 1.0
-    m.color.a = 1.0
+    m.color.g, m.color.a = 1.0, 1.0
     m.pose.orientation.w = 1.0
     for x, y in zip(msg.waypoint_x, msg.waypoint_y):
-        pt = Point()
-        pt.x, pt.y, pt.z = x, y, 0.05
-        m.points.append(pt)
+        m.points.append(Point(x=x, y=y, z=0.05))
     pub.publish(m)
 
 
 if __name__ == '__main__':
     rospy.init_node('path_visualizer_node')
+    FRAME = rospy.get_param('~frame_id', 'odom')
     pub = rospy.Publisher('/guidance_path_marker', Marker, queue_size=1)
     rospy.Subscriber('/qcar/trajectory_topic', TrajectoryMessage, traj_callback)
-    rospy.loginfo("path_visualizer_node started")
     rospy.spin()

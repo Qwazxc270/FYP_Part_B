@@ -6,24 +6,25 @@
 #include <limits>
 #include "classControl.h"
 
-#define M_PI 3.14159265358979323846
 
-const int Np = 60;
+#define M_PI 3.14159265358979323846
+const double rw     = 0.033;
+const double gr     = (13.0/70.0) * (19.0/37.0);
+const double Rm     = 0.470;
+const double Kt     = 0.0027;
+const double Ke     = 0.0027;
+const double V_max  = 11.1;
+const double m      = 2.7;
+const double c_drag = 0.5;
+const double L      = 0.256;
+
+const int Np = 120;
 // ----------------- DYNAMICS -----------------
 void qcarDynamics(const std::vector<double>& x,
                   const std::vector<double>& u,
                   double dt,
                   std::vector<double>& x_next)
 {
-    double L      = 0.256;
-    double rw     = 0.033;
-    double gr     = (13.0/70.0) * (19.0/37.0);
-    double Rm     = 0.470;
-    double Kt     = 0.0027;
-    double Ke     = 0.0027;
-    double V_max  = 11.1;
-    double m      = 2.7;
-    double c_drag = 0.5;
 
     double X   = x[0];
     double Y   = x[1];
@@ -94,23 +95,19 @@ double getAlongTrackError(double X, double Y, int idx, classControl& controller)
 }
 
 // ----------------- MPC -----------------
-std::vector<double> runMPC(const std::vector<double>& x0,
-                           const std::vector<std::vector<double>>& x_ref,
-                           double dt,
-                           const std::vector<double>& prev_u)
+std::vector<double> runMPC(const std::vector<double>& x0,const std::vector<std::vector<double>>& x_ref,double dt,
+            const std::vector<double>& prev_u)
 {
-    
-
     // ---- WEIGHTS ----
     double w_pos   = 10000.0;
     double w_head  = 700.0;
     double w_vel   = 100.0;
     double w_input = 0.001; 
     double w_rate  = 500.0;
-    
-    
+
     double best_cost = std::numeric_limits<double>::max();
     std::vector<double> best_u(2, 0.0);
+    
 
     // ---- SEARCH SPACE ----
     double max_delta = 35.0 * M_PI / 180.0; // ≈ 0.61 rad
@@ -123,51 +120,42 @@ std::vector<double> runMPC(const std::vector<double>& x0,
             double cost = 0.0;
 
             for(int k = 0; k < Np; k++)
+            {
+                std::vector<double> u = {delta, throttle};
+
+                std::vector<double> x_next(4);
+                qcarDynamics(x_pred, u, dt, x_next);
+
+                double v_current = x_pred[3];
+                double v_next    = x_next[3];
+                double a = (v_next - v_current) / dt;
+
+                if(a > 3.0 || a < -3.0)
                 {
-                    std::vector<double> u = {delta, throttle};
-
-                    // 1. declare first
-                    std::vector<double> x_next(4);
-
-                    // 2. simulate
-                    qcarDynamics(x_pred, u, dt, x_next);
-
-                    // 3. compute acceleration
-                    double v_current = x_pred[3];
-                    double v_next    = x_next[3];
-                    double a = (v_next - v_current) / dt;
-
-                    // 4. constraint check
-                    if(a > 3.0 || a < -3.0)
-                    {
-                        cost += 1e6;
-                        break;  
-                    }
-
-                    // 5. update state
-                    x_pred = x_next;
-
-                    // 6. cost calculation
-                    double dx = x_pred[0] - x_ref[0][k];
-                    double dy = x_pred[1] - x_ref[1][k];
-                    double pos_err = dx*dx + dy*dy;
-
-                    double dpsi = atan2(sin(x_pred[2] - x_ref[2][k]),
-                                        cos(x_pred[2] - x_ref[2][k]));
-                    double head_err = dpsi*dpsi;
-
-                    double vel_err = pow(x_pred[3] - x_ref[3][k], 2);
-
-                    cost += w_pos*pos_err + w_head*head_err + w_vel*vel_err;
-
-                    
+                    cost += 1e6;
+                    break;  
                 }
-                    
-                    double d_delta    = delta - prev_u[0];
-                    double d_throttle = throttle - prev_u[1];
-                    cost += w_rate * (d_delta*d_delta + d_throttle*d_throttle);
 
-            // control effort penalty
+                x_pred = x_next;
+ 
+
+                double dx = x_pred[0] - x_ref[0][k];
+                double dy = x_pred[1] - x_ref[1][k];
+                double pos_err = dx*dx + dy*dy;
+
+                double dpsi = atan2(sin(x_pred[2] - x_ref[2][k]),
+                                    cos(x_pred[2] - x_ref[2][k]));
+                double head_err = dpsi*dpsi;
+
+                double vel_err = pow(x_pred[3] - x_ref[3][k], 2);
+
+                cost += w_pos*pos_err + w_head*head_err + w_vel*vel_err;
+            }
+
+            double d_delta    = delta - prev_u[0];
+            double d_throttle = throttle - prev_u[1];
+            cost += w_rate * (d_delta*d_delta + d_throttle*d_throttle);
+
             cost += w_input * (delta*delta + throttle*throttle);
 
             if(cost < best_cost)
@@ -175,13 +163,15 @@ std::vector<double> runMPC(const std::vector<double>& x0,
                 best_cost = cost;
                 best_u[0] = delta;
                 best_u[1] = throttle;
+                  
+                
             }
         }
     }
 
+    
     return best_u;
 }
-
 // ----------------- MAIN -----------------
 int main(int argc, char **argv)
 {
@@ -248,10 +238,11 @@ int main(int argc, char **argv)
 
                 double delta = u[0];
                 double throttle = u[1];
-                prev_u = u;
+                double v_desired = u[2];        // one-step-ahead predicted velocity
+                prev_u = {u[0], u[1]};          
 
-                // ---- CONVERT THROTTLE TO WHEEL SPEED ----
-                double omega = throttle * 10.0;
+                
+                double omega = x_ref[3][0] / rw;
 
                 qcarController.command(omega, delta);
 
@@ -259,17 +250,18 @@ int main(int argc, char **argv)
 
                 ros::spinOnce();
                 loop_rate.sleep();
-
-                //std::cout << "[t] " << time
-                          //<< " | omega " << omega
-                          //<< " | delta " << delta
-                          //<< " | throttle " << throttle << "\n";
+                
+                //change which data is being pushed to the console
+                std::cout << "[t] " << time
+                          << " | omega " << omega
+                          << " | delta " << delta
+                          << " | speed [m/s] " << omega * rw << "\n";
                 
                 //tracking error mode
-                std::cout << "[t] " << time
-                    << " | cte " << cte << (cte >= 0 ? " (L)" : " (R)")
-                    << " | ate " << ate << (ate >= 0 ? " (ahead)" : " (behind)")
-                    << " | throttle " << throttle << "\n";
+                //std::cout << "[t] " << time
+                 //   << " | cte " << cte << (cte >= 0 ? " (L)" : " (R)")
+                 //   << " | ate " << ate << (ate >= 0 ? " (ahead)" : " (behind)")
+                  //<< " | speed [m/s] " << omega * rw << "\n";
 
 
                 // removed: no longer meaningful with continuously-replanned trajectories

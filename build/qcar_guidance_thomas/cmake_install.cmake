@@ -57,7 +57,7 @@ if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/qcar_guidance_thomas" TYPE PROGRAM FILES "/home/luke/catkin_ws/build/qcar_guidance_thomas/catkin_generated/installspace/fake_cone_publisher.py")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/qcar_guidance_thomas" TYPE PROGRAM FILES "/home/luke/catkin_ws/build/qcar_guidance_thomas/catkin_generated/installspace/fake_track_sim_node.py")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
@@ -66,5 +66,19 @@ endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/qcar_guidance_thomas" TYPE PROGRAM FILES "/home/luke/catkin_ws/build/qcar_guidance_thomas/catkin_generated/installspace/trajectory_logger_node.py")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/qcar_guidance_thomas" TYPE FILE FILES
+    "/home/luke/catkin_ws/src/qcar_guidance_thomas/scripts/guidance_core.py"
+    "/home/luke/catkin_ws/src/qcar_guidance_thomas/scripts/track_sim.py"
+    )
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/qcar_guidance_thomas" TYPE DIRECTORY FILES
+    "/home/luke/catkin_ws/src/qcar_guidance_thomas/launch"
+    "/home/luke/catkin_ws/src/qcar_guidance_thomas/config"
+    )
 endif()
 

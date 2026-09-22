@@ -1,35 +1,95 @@
-# ---------------------------------------------------------------
-# Guidance tunables (qcar_guidance_thomas)
-# Edit values here -- no code changes needed. Loaded by the launch
-# files via <rosparam command="load">.
-# ---------------------------------------------------------------
+# ====================================================================
+# qcar_guidance_thomas v5 -- every tunable. Edit here, no code changes.
+# Defaults live in scripts/guidance_core.py (DEFAULTS); values here
+# override them. Loaded by the launch files with <rosparam load>.
+# ====================================================================
 
-max_velocity: 0.5          # top speed on straights (m/s)
-min_velocity: 0.2          # slowest corner speed (m/s)
-creep_velocity: 0.15       # bootstrap speed while track not yet visible (m/s)
+# ---------------- MAPPING LAP (lap 1): local planning ---------------
+max_velocity: 0.5          # m/s on straights
+min_velocity: 0.2          # m/s in tight corners, and in EDGE mode
+creep_velocity: 0.15       # m/s while the track is not yet visible
+recovery_velocity: 0.05    # m/s crawl when perception is bad / car stuck
+curvature_slowdown: 2.0    # higher = slower into corners
+speed_lookahead_m: 1.0     # published velocity = slowest speed in the next
+                           # this-many metres (controller uses one scalar)
+min_cones_per_side: 2
+creep_distance: 1.5        # m ahead the creep path aims
+max_planning_range: 6.0    # m, ignore remembered cones further than this
+plan_rate_hz: 2.0
 
-min_cones_per_side: 2      # blue AND yellow count needed for full planning
-track_half_width: 1.5      # assumed half track width (m) -- creep mode only
-creep_distance: 1.5        # how far ahead creep mode aims (m)
-
-cone_memory_seconds: 3.0   # how long a cone stays remembered after last seen (s)
-cone_merge_dist: 0.5       # detections closer than this are the same cone (m)
-max_planning_range: 6.0    # ignore remembered cones farther than this (m)
-
-curvature_slowdown: 2.0    # higher = more aggressive slowing in corners
-plan_rate_hz: 2            # replanning frequency (Hz)
-
-# true  -> detections arrive in the car frame (base_footprint), the node
-#          transforms them into the fixed odom frame using odometry (real pipeline)
-# false -> detections are already in a fixed frame (fake publisher test)
+# cone memory (local frame)
+cone_memory_seconds: 3.0
+cone_merge_dist: 0.5
 detections_in_car_frame: true
 
-# --- geometric fallback (v3) -------------------------------------------
-# When colour information is missing or incomplete, split remembered cones
-# into left/right by their lateral offset in the car frame instead of by
-# colour. Needed on Track1 because the 62 deg camera FOV never sees the
-# inner boundary out of the start, so those cones only arrive colourless
-# from lidar.
-use_geometric_fallback: true
-min_ahead: -0.5      # ignore cones further behind the car than this (m)
-max_lateral: 3.0     # ignore cones wider than this from the car centreline (m)
+# boundary chaining
+use_geometric_fallback: true   # split left/right by position when colour
+                               # is missing or incomplete
+min_ahead: -0.5
+max_lateral: 3.0
+max_link: 1.6                  # m, max gap between consecutive boundary cones
+max_link_turn_deg: 45.0        # max turn between consecutive links
+max_first_link_turn_deg: 80.0  # first link when only the car heading is known
+max_seeded_first_turn_deg: 65.0  # first link from the boundary's own direction:
+                                 # loose enough for hairpins, rejects the ~90 deg
+                                 # corridor at a figure-8 crossover
+use_edge_following: true       # one edge visible -> follow it at half-width
+default_track_width: 1.5       # m, until real cone pairs are measured
+
+# ---------------- input validation ----------------------------------
+max_detections_per_frame: 80   # real frames reach ~45 on dense tracks;
+                               # the Gazebo glitch was 227
+min_hits: 2                    # sightings before a cone is trusted
+min_track_width: 0.6           # m, reject cone pairs narrower (Track2/3 ~0.95)
+max_track_width: 3.0           # m, absolute cap (Track1 is ~2 m)
+width_tolerance: [0.6, 1.6]    # once measured, accept pairs within this
+                               # multiple of the track width (stops a 4 m
+                               # 'corridor' across Track3's infield)
+
+# ---------------- recovery / safety ---------------------------------
+detection_timeout: 2.0     # s without cones -> RECOVERY (crawl)
+lost_stop_timeout: 6.0     # s without cones -> LOST (stop)
+hold_timeout: 1.5          # s to keep the last path through a momentary gap
+stuck_window: 3.0          # s window for the stuck check
+stuck_min_motion: 0.10     # m, moved less than this in the window -> stuck
+
+# ---------------- lap detection -------------------------------------
+lap_close_radius: 1.0      # m from the start pose
+lap_leave_radius: 3.0      # must have gone at least this far away first
+lap_min_length: 10.0       # m driven before a lap can count
+lap_max_heading_err_deg: 60.0  # heading check: a figure-8 crossover
+                               # near the start must not count as a lap
+total_laps: 0              # stop after this many laps (0 = never stop)
+
+# ---------------- RACE LAPS (lap 2+) --------------------------------
+race_enabled: true
+race_map_source: auto      # auto | slam | own
+                           #  slam: Ethan's /cone_map_markers (map frame)
+                           #  own:  our own accumulated cones (local frame)
+race_allow_own_map: false  # race WITHOUT SLAM? Unsafe: the line drifts with
+                           # odometry (14 cone hits in testing). Off = safe laps.
+race_margin: 0.40          # m, keep this far inside each edge
+race_min_clearance: 0.28   # m, line must stay this far from every cone
+                           # (car half-width + cone radius + tracking allowance)
+race_max_cone_lateral: 2.5
+race_build_ds: 0.20        # m, point spacing during optimisation
+race_iterations: 5         # re-solve passes (converges in ~4)
+race_ds: 0.125             # m, point spacing of the published line
+race_max_missing_frac: 0.30
+race_window_m: 4.0         # m of race line published each cycle
+race_max_velocity: 0.8     # m/s
+race_min_velocity: 0.2
+race_lat_accel: 1.0        # m/s^2 grip limit: v^2 * curvature <= this
+race_accel: 0.5            # m/s^2
+race_brake: 1.0            # m/s^2
+race_max_deviation: 0.6    # m off the line -> fall back to local planning
+race_rejoin_deviation: 0.3
+race_live_clearance: 0.20   # race path this close to a cone the car can SEE
+                            # right now -> line misaligned, plan locally instead
+race_live_check_m: 2.5      # m along the path to check
+
+# ---------------- frames --------------------------------------------
+align_tau: 1.0             # s, map->local correction smoothing. Longer hides
+                           # SLAM jumps better but lags odometry drift (3.0
+                           # caused 25 cm errors and cone hits in testing)
+slam_timeout: 2.0          # s without SLAM pose -> race falls back to local

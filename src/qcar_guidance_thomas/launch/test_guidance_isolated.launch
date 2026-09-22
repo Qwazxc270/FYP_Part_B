@@ -1,18 +1,34 @@
 <launch>
-    <!-- Isolated guidance test: fake cones + guidance + visualizer.
-         No Gazebo, no navigation stack needed. Fast iteration loop. -->
+    <!-- ================================================================
+         Isolated test: guidance node + a fake closed-loop track simulator.
+         No Gazebo, no navigation, no controller needed. Runs mapping lap
+         -> race line -> race laps on the real cone layout of any track.
 
-    <node name="fake_cone_publisher" pkg="qcar_guidance_thomas"
-          type="fake_cone_publisher.py" output="screen"/>
+           roslaunch qcar_guidance_thomas test_guidance_isolated.launch
+           roslaunch qcar_guidance_thomas test_guidance_isolated.launch track:=Figure8
+           roslaunch qcar_guidance_thomas test_guidance_isolated.launch rviz:=false
 
-    <node name="online_guidance_node" pkg="qcar_guidance_thomas"
-          type="online_guidance_node.py" output="screen">
-        <rosparam command="load"
-                  file="$(find qcar_guidance_thomas)/config/guidance_params.yaml"/>
-        <!-- fake publisher sends fixed-frame detections -->
-        <param name="detections_in_car_frame" value="false"/>
+         Watch for: "LAP 1 complete", "RACE LINE BUILT", then RACE mode.
+         The fake sim prints "CONE HIT" if the car touches a cone.
+         ================================================================ -->
+    <arg name="track" default="Track1"/>
+    <arg name="laps"  default="3"/>
+    <arg name="rviz"  default="true"/>
+
+    <node name="fake_track_sim" pkg="qcar_guidance_thomas" type="fake_track_sim_node.py" output="screen">
+        <param name="track" value="$(arg track)"/>
     </node>
 
-    <node name="path_visualizer_node" pkg="qcar_guidance_thomas"
-          type="path_visualizer_node.py" output="screen"/>
+    <node name="guidance_node" pkg="qcar_guidance_thomas" type="online_guidance_node.py" output="screen">
+        <rosparam command="load" file="$(find qcar_guidance_thomas)/config/guidance_params.yaml"/>
+        <param name="total_laps" value="$(arg laps)"/>
+        <param name="local_odom_topic" value="/odometry/local"/>
+        <param name="map_odom_topic" value="/odometry/filtered"/>
+    </node>
+
+    <node name="path_visualizer_node" pkg="qcar_guidance_thomas" type="path_visualizer_node.py" output="screen"/>
+    <node name="trajectory_logger_node" pkg="qcar_guidance_thomas" type="trajectory_logger_node.py" output="screen"/>
+
+    <node if="$(arg rviz)" name="rviz" pkg="rviz" type="rviz"
+          args="-d $(find qcar_guidance_thomas)/config/guidance.rviz"/>
 </launch>
