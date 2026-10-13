@@ -1,0 +1,10 @@
+# Loaded on top of the platform profile when fault_injector:=true.
+# Points the supervisor's sensor inputs at the injector's outputs.
+supervisor:
+  topics:
+    imu_in:          /supervisor_fi/imu
+    wheel_rl_vel_in: /supervisor_fi/wheelrl_motor/velocity
+    wheel_rr_vel_in: /supervisor_fi/wheelrr_motor/velocity
+    cones_cam_in:    /supervisor_fi/cone_detections_camera
+    cones_lidar_in:  /supervisor_fi/cone_detections_lidar
+    lidar_scan_in:   /supervisor_fi/scan

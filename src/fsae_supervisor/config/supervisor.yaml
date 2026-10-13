@@ -1,0 +1,147 @@
+# =====================================================================
+# Supervisor configuration — YAML port of supervisorConfig.m.
+# Loaded under /fsae_supervisor/supervisor/... and consumed by
+# supervisor_node.py via SupervisorConfig.from_rosparam().
+# =====================================================================
+
+supervisor:
+  rate_hz: 20.0
+  L_wheelbase: 0.256           # QCar [m]
+
+  residual:
+    names:
+      - sigma_pos              # 1
+      - cte                    # 2
+      - speed_dev              # 3
+      - NIS_mean               # 4
+      - mpc_time_norm          # 5
+      - imu_enc_parity         # 6
+      - steer_parity           # 7
+      - drive_parity           # 8
+      - cam_age                # 9
+      - lid_age                # 10
+      - imu_freeze             # 11
+      - enc_freeze             # 12
+      - filter_gap             # 13  /odometry/local vs /odometry/filtered
+    units:     [m, m, m/s, "-", "-", rad/s, rad, m/s, s, s, "-", "-", "-"]
+    sigma_nom: [0.20, 0.30, 0.50, 2.00, 0.80, 0.20, 0.05, 0.50, 0.20, 0.20, 0.50, 0.50, 0.50]
+
+    # Config-level channel mask. A disabled channel is always r_valid=false
+    # (IMM marginalises it) and its soft flags are suppressed. Disabled
+    # here = the team stack does not publish the data yet; see
+    # INTEGRATION_TODO.md. A platform profile may override any entry.
+    enabled:
+      sigma_pos:      true     # from odom_in pose covariance (gazebo: /odometry/local;
+                               #   nav_filter_node publishes NO covariance -> r1 stays invalid
+                               #   until it does; see INTEGRATION_TODO)
+      cte:            false    # TODO: needs MPC cte (MpcStats)
+      speed_dev:      true     # odom twist v vs trajectory velocity (approx v_ref)
+      NIS_mean:       false    # TODO: needs EKF NIS
+      mpc_time_norm:  false    # TODO: needs MPC solve time (MpcStats)
+      imu_enc_parity: true     # /imu vs wheel speed + steering command
+      steer_parity:   false    # TODO: needs measured steering angle
+      drive_parity:   true     # wheel speed vs trajectory velocity (approx v_ref)
+      cam_age:        true
+      lid_age:        true
+      imu_freeze:     true
+      enc_freeze:     true
+      filter_gap:     false    # opt-in: needs both /odometry/local and /odometry/filtered;
+                               #   tune thresholds on Gazebo bags before enabling
+
+  # filter_gap (r13): relative-motion consistency between the local
+  # (wheels+IMU) estimator on odom_in and the SLAM estimator on odom_ref_in.
+  # r13 = max(|dpos_local - dpos_ref| / pos_thresh_m, |dyaw_local - dyaw_ref| / yaw_thresh_rad)
+  # over the last window_s, both interpolated at the same stamps.
+  filter_gap:
+    window_s:       1.0
+    pos_thresh_m:   0.15
+    yaw_thresh_rad: 0.10
+    max_age_s:      0.5      # invalid if either estimator is older than this
+    history_s:      3.0
+
+  mode:
+    names_fine:
+      - Nominal
+      - Degraded-Perception
+      - Degraded-Proprioception
+      - Degraded-Compute
+      - Degraded-Actuation
+      - Critical
+    names_coarse: [Nominal, Degraded, Critical]
+    # Explicit fine -> coarse mapping (authoritative). The integer
+    # coarse_map below is kept for readability and is checked against it.
+    coarse_of:
+      Nominal:                 Nominal
+      Degraded-Perception:     Degraded
+      Degraded-Proprioception: Degraded
+      Degraded-Compute:        Degraded
+      Degraded-Actuation:      Degraded
+      Critical:                Critical
+    coarse_map:   [1, 2, 2, 2, 2, 3]
+    inflate_idx:                                 # 1-indexed
+      - []                                       # 1 Nominal
+      - [9, 10, 13]                              # 2 DP   (13 filter_gap: SLAM side)
+      - [1, 6, 11, 12, 13]                       # 3 DPr  (13 filter_gap: odometry side)
+      - [5]                                      # 4 DC
+      - [7, 8]                                   # 5 DA
+      - all                                      # 6 Critical
+    inf_deg:  10.0
+    inf_crit: 30.0
+
+  imm:
+    TPM:
+      - [0.950, 0.015, 0.015, 0.008, 0.008, 0.004]
+      - [0.050, 0.880, 0.010, 0.005, 0.005, 0.050]
+      - [0.050, 0.010, 0.880, 0.005, 0.005, 0.050]
+      - [0.060, 0.005, 0.005, 0.880, 0.005, 0.045]
+      - [0.040, 0.005, 0.005, 0.005, 0.880, 0.065]
+      - [0.000, 0.000, 0.000, 0.000, 0.000, 1.000]
+    mu0:          [0.94, 0.02, 0.02, 0.005, 0.005, 0.01]
+    mu_floor:     1.0e-9
+    loglik_floor: -50.0
+    z_clamp:      5.0
+
+  action:
+    thresh_critical:  0.50
+    thresh_degraded:  0.40
+    k_enter_degraded: 3
+    k_enter_critical: 2
+    k_exit_degraded:  8
+    speed_scale:
+      nominal:                 1.00
+      degraded_perception:     0.50
+      degraded_proprioception: 0.50
+      degraded_compute:        0.70
+      degraded_actuation:      0.50
+      critical:                0.00
+
+  override:
+    cones_both_timeout: 0.5
+    steer_err_critical: 0.1745      # 10 deg in rad
+    steer_timeout:      0.3
+    drive_err_critical: 0.3
+    drive_timeout:      0.5
+    obstacle_min_dist:  0.15
+
+  window:
+    freeze_W: 10
+    NIS_W:    10
+    parity_W: 5
+    mpc_W:    10
+
+  flag:
+    sigma_pos_warn: 0.5
+    sigma_pos_crit: 1.5
+    cte_warn:       0.4
+    cte_crit:       0.8
+
+  # Topics and platform constants are NOT set here; they come from the
+  # platform profile loaded on top of this file:
+  #   config/platforms/gazebo.yaml   (default)
+  #   config/platforms/qcar_hw.yaml  (placeholder — real QCar)
+  # Outputs are platform-independent:
+  topics:
+    residuals_out:     /supervisor/residuals
+    posterior_out:     /supervisor/posterior
+    action_out:        /supervisor/action
+    fault_flags_out:   /supervisor/fault_flags

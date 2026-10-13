@@ -1,0 +1,8 @@
+# SetMission.srv — transition the mission FSM.
+#
+# command : go | estop | reset
+string command
+---
+bool    success
+string  message
+uint8   new_state

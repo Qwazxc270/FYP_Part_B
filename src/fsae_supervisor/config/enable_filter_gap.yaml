@@ -1,0 +1,6 @@
+# Opt-in overlay: enables r13 filter_gap (pass as extra_config:=...).
+# Tune supervisor/filter_gap thresholds on Gazebo bags first.
+supervisor:
+  residual:
+    enabled:
+      filter_gap: true

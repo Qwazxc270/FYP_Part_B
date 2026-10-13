@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<!--
+  Supervisor + mission manager (+ optional fault injector) only.
+  Assumes the platform (Gazebo team sim, real QCar, or rosbag) is
+  already publishing. All platform topic names come from
+  config/platforms/$(arg platform).yaml.
+
+    roslaunch fsae_supervisor supervisor.launch                       # gazebo profile
+    roslaunch fsae_supervisor supervisor.launch platform:=qcar_hw
+    roslaunch fsae_supervisor supervisor.launch fault_injector:=true preset:=camera_loss
+    roslaunch fsae_supervisor supervisor.launch extra_config:=$(rospack find fsae_supervisor)/config/enable_filter_gap.yaml
+-->
+<launch>
+  <arg name="platform"       default="gazebo"/>          <!-- gazebo | qcar_hw -->
+  <arg name="fault_injector" default="false"/>
+  <arg name="preset"         default="none"/>
+  <arg name="mission_mode"   default="lap"/>             <!-- lap | time -->
+  <!-- Optional YAML loaded last (e.g. to enable filter_gap for a test run). -->
+  <arg name="extra_config"   default=""/>
+
+  <!-- Order matters: base config, then platform profile overrides. -->
+  <rosparam command="load" file="$(find fsae_supervisor)/config/supervisor.yaml"/>
+  <rosparam command="load" file="$(find fsae_supervisor)/config/mission.yaml"/>
+  <rosparam command="load" file="$(find fsae_supervisor)/config/fault_injector.yaml"/>
+  <rosparam command="load" file="$(find fsae_supervisor)/config/platforms/$(arg platform).yaml"/>
+  <param name="mission_manager/mode" value="$(arg mission_mode)"/>
+  <rosparam command="load" file="$(arg extra_config)" if="$(eval arg('extra_config') != '')"/>
+
+  <group if="$(arg fault_injector)">
+    <rosparam command="load" file="$(find fsae_supervisor)/config/platforms/fault_injection_remap.yaml"/>
+    <param name="fault_injector/preset" value="$(arg preset)"/>
+    <node pkg="fsae_supervisor" type="fault_injector_node.py" name="fault_injector" output="screen">
+      <param name="config_ns" value="fault_injector"/>
+      <param name="auto_arm"  value="true"/>
+    </node>
+  </group>
+
+  <node pkg="fsae_supervisor" type="supervisor_node.py" name="supervisor_node" output="screen">
+    <param name="config_ns" value="supervisor"/>
+  </node>
+
+  <node pkg="fsae_supervisor" type="mission_manager_node.py" name="mission_manager" output="screen">
+    <param name="config_ns" value="mission_manager"/>
+  </node>
+</launch>

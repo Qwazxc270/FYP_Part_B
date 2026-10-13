@@ -1,0 +1,62 @@
+# =====================================================================
+# Platform profile: Gazebo simulation (FYP_Part_B root src/, launched
+# via qcar_guidance_thomas/guidance_gazebo.launch).
+# Every platform-specific topic name / type / constant lives here.
+# Switching to hardware = launch with platform:=qcar_hw (config only).
+# Empty topic string = not available -> the node does not subscribe.
+# =====================================================================
+supervisor:
+  platform:
+    name: gazebo
+    wheel_radius: 0.0325          # nav_filter_node.py
+    rear_left_wheel_sign: -1.0    # EKF_navigation.launch
+    rear_right_wheel_sign: 1.0
+    steer_sign: 1.0
+    v_ref_source: trajectory      # TrajectoryMessage.velocity (no MpcStats yet)
+    scan_range_min: 0.05          # ignore LiDAR self-hits below this
+
+  topics:
+    imu_in:            /imu                                # sensor_msgs/Imu
+    lidar_scan_in:     /scan                               # sensor_msgs/LaserScan
+    wheel_rl_vel_in:   /wheelrl_motor/velocity             # std_msgs/Float32 [rad/s]
+    wheel_rr_vel_in:   /wheelrr_motor/velocity             # std_msgs/Float32 [rad/s]
+    steer_fl_cmd_in:   /qcar/base_fl_controller/command    # std_msgs/Float64 [rad]
+    steer_fr_cmd_in:   /qcar/base_fr_controller/command    # std_msgs/Float64 [rad]
+    steer_meas_in:     ""                                  # none in sim (no servo feedback)
+    # Localisation channels (r1 sigma_pos, r3 speed_dev, future r4 NIS)
+    # use nav_filter_node — the estimate guidance + control actually drive on.
+    odom_in:           /odometry/local                     # nav_msgs/Odometry (nav_filter_node, remapped)
+    # SLAM estimate — used ONLY by r13 filter_gap (when enabled).
+    odom_ref_in:       /odometry/filtered                  # nav_msgs/Odometry (ekf_slam_node)
+    # Note: SupervisorAction.adjust_slam (reweight-SLAM request) targets
+    # ekf_slam_node, not nav_filter_node.
+    cones_cam_in:      /cone_detections_camera             # qcar_navigation/ConeDetectionArray
+    cones_lidar_in:    /cone_detections_lidar              # geometry_msgs/PoseArray
+    trajectory_in:     /qcar/trajectory_topic              # qcar_guidance/TrajectoryMessage
+    guidance_status_in: /guidance_status                   # std_msgs/String (JSON, has 'lap')
+    ekf_state_in:      ""                                  # fsae_supervisor/EkfState (TODO: NIS from nav_filter_node)
+    mpc_stats_in:      ""                                  # fsae_supervisor/MpcStats (TODO)
+
+fault_injector:
+  # Injector sits only on the supervisor's observation path; the team
+  # stack keeps reading the real topics. With fault_injector:=true the
+  # launch file loads platforms/fault_injection_remap.yaml on top.
+  topics:
+    imu_in:           /imu
+    imu_out:          /supervisor_fi/imu
+    wheel_rl_in:      /wheelrl_motor/velocity
+    wheel_rl_out:     /supervisor_fi/wheelrl_motor/velocity
+    wheel_rr_in:      /wheelrr_motor/velocity
+    wheel_rr_out:     /supervisor_fi/wheelrr_motor/velocity
+    cones_cam_in:     /cone_detections_camera
+    cones_cam_out:    /supervisor_fi/cone_detections_camera
+    cones_lidar_in:   /cone_detections_lidar
+    cones_lidar_out:  /supervisor_fi/cone_detections_lidar
+    lidar_scan_in:    /scan
+    lidar_scan_out:   /supervisor_fi/scan
+
+mission_manager:
+  topics:
+    guidance_status_in: /guidance_status
+    waypoint_index_in:  ""
+    waypoints_per_lap_in: ""

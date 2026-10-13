@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<!--
+  Team Gazebo stack (FYP_Part_B root src/) + supervisor + mission manager.
+
+  Brings up the team's own top-level sim launch unchanged
+  (qcar_guidance_thomas/guidance_gazebo.launch: Gazebo world, QCar,
+  ekf_slam_node -> /odometry/filtered, nav_filter_node -> /odometry/local,
+  cone detection/fusion, online guidance, MPC control_node), then the
+  supervisor on top. No teammate node is modified or remapped.
+
+    roslaunch fsae_supervisor integration_gazebo.launch
+    roslaunch fsae_supervisor integration_gazebo.launch track:=Figure8 laps:=3
+    roslaunch fsae_supervisor integration_gazebo.launch fault_injector:=true preset:=camera_loss
+
+  Start the mission:  rosservice call /mission_manager/set_mission "command: go"
+
+  NOTE: the supervisor's speed_scale / estop are published on
+  /supervisor/action but the team MPC does not consume them yet
+  (see INTEGRATION_TODO.md). In this configuration the supervisor is
+  monitor-only.
+-->
+<launch>
+  <arg name="track"          default="Track1"/>   <!-- Track1|Track2|Track3|CircleTrack|Figure8 -->
+  <arg name="laps"           default="0"/>
+  <arg name="debug"          default="true"/>
+  <arg name="fault_injector" default="false"/>
+  <arg name="preset"         default="none"/>
+  <arg name="mission_mode"   default="lap"/>
+  <arg name="extra_config"   default=""/>
+
+  <include file="$(find qcar_guidance_thomas)/launch/guidance_gazebo.launch">
+    <arg name="track" value="$(arg track)"/>
+    <arg name="laps"  value="$(arg laps)"/>
+    <arg name="debug" value="$(arg debug)"/>
+  </include>
+
+  <include file="$(find fsae_supervisor)/launch/supervisor.launch">
+    <arg name="platform"       value="gazebo"/>
+    <arg name="fault_injector" value="$(arg fault_injector)"/>
+    <arg name="preset"         value="$(arg preset)"/>
+    <arg name="mission_mode"   value="$(arg mission_mode)"/>
+    <arg name="extra_config"   value="$(arg extra_config)"/>
+  </include>
+</launch>

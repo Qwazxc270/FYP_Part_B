@@ -1,0 +1,37 @@
+# =====================================================================
+# Mission manager configuration — YAML port of the missionCfg block
+# in run.m plus the logic from initMission.m / updateMission.m.
+# =====================================================================
+
+mission_manager:
+  rate_hz: 20.0
+  mode: lap                  # {lap, time}
+
+  go_time_s: 0.0
+  target_speed: 1.0
+
+  lap_count_target: 3
+  lap_target_speed: 0.7
+
+  time_limit_s:      60.0
+  time_target_speed: 1.0
+
+  # Lap detection — fractions of the *per-lap* waypoint list.
+  wrap_high_frac: 0.85
+  wrap_low_frac:  0.15
+  min_lap_time_s: 3.0
+
+  # Total number of waypoints in one lap. Published by the path
+  # planner; if it is not known yet the manager defers lap detection.
+  waypoints_per_lap_default: 0
+
+  # Lap source: "guidance_status" (team online_guidance_node publishes
+  # /guidance_status JSON with 'laps_done') or "waypoint_wrap" (legacy
+  # MATLAB scheme; needs a waypoint-index topic nobody publishes yet).
+  lap_source: guidance_status
+
+  # Platform-specific input topics come from config/platforms/<platform>.yaml.
+  topics:
+    action_in:         /supervisor/action
+    status_out:        /mission/status
+    target_speed_out:  /mission/target_speed    # std_msgs/Float32
