@@ -1,0 +1,46 @@
+# =====================================================================
+# Platform profile: real Quanser QCar 1 — PLACEHOLDER.
+# Every value marked CONFIRM must be checked against the team's
+# hardware bring-up (Quanser ROS driver) before first run.
+# See INTEGRATION_TODO.md section "Hardware".
+# =====================================================================
+supervisor:
+  platform:
+    name: qcar_hw
+    wheel_radius: 0.0330          # CONFIRM (QCar spec ~0.033 m)
+    rear_left_wheel_sign: 1.0     # CONFIRM — unused if a single encoder speed topic is used
+    rear_right_wheel_sign: 1.0
+    steer_sign: 1.0               # CONFIRM
+    v_ref_source: trajectory
+    scan_range_min: 0.15          # CONFIRM (RPLidar min range / chassis self-hits)
+
+  # NOTE: on the QCar the motor encoder is a single drive-motor count,
+  # not per-wheel. Put the encoder-derived speed topic in wheel_rl_vel_in
+  # and leave wheel_rr_vel_in empty, OR use encoder_speed_in (Float32 m/s)
+  # which takes precedence when set.
+  topics:
+    imu_in:            /qcar/imu                 # CONFIRM
+    lidar_scan_in:     /scan                     # CONFIRM
+    encoder_speed_in:  ""                        # CONFIRM: Float32 [m/s] from motor encoder
+    wheel_rl_vel_in:   ""                        # CONFIRM
+    wheel_rr_vel_in:   ""
+    steer_fl_cmd_in:   ""                        # CONFIRM: steering command topic/type on hw
+    steer_fr_cmd_in:   ""
+    steer_meas_in:     ""                        # QCar has no steering feedback -> keep steer_parity off
+    odom_in:           /odometry/local           # nav_filter_node on hw? CONFIRM
+    odom_ref_in:       /odometry/filtered        # ekf_slam_node on hw? CONFIRM (filter_gap only)
+    cones_cam_in:      /cone_detections_camera
+    cones_lidar_in:    /cone_detections_lidar
+    trajectory_in:     /qcar/trajectory_topic
+    guidance_status_in: /guidance_status
+    ekf_state_in:      ""
+    mpc_stats_in:      ""
+
+fault_injector:
+  topics: {}
+
+mission_manager:
+  topics:
+    guidance_status_in: /guidance_status
+    waypoint_index_in:  ""
+    waypoints_per_lap_in: ""

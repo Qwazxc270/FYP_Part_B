@@ -1,0 +1,18 @@
+# SetFault.srv — activate/deactivate a fault at runtime.
+#
+# subsystem  : {camera, lidar, imu, encoder, steering, drive, obstacle}
+# type       : subsystem-specific subtype
+#                imu:     freeze | bias | noise
+#                encoder: freeze | zero | scale
+#                others:  ignored
+# value      : subtype parameter (bias magnitude, noise sigma, scale factor)
+# duration_s : auto-deactivate after this long (0 = until stopped)
+# active     : true = start, false = stop
+string  subsystem
+string  type
+float32 value
+float32 duration_s
+bool    active
+---
+bool    success
+string  message

@@ -1,0 +1,63 @@
+# =====================================================================
+# Fault injector configuration — YAML port of initFaultConfig.m.
+# Two activation modes: scripted (start_time/end_time on a wall clock
+# armed by ~arm service) and runtime (~set_fault service).
+# =====================================================================
+
+fault_injector:
+  preset: none            # {none, camera_loss, lidar_loss, both_sensors,
+                          #  imu_freeze, steering, cascade, obstacle_on_track}
+
+  camera:   {active: false, start_time: 1.0e9, end_time: 1.0e9}
+  lidar:    {active: false, start_time: 1.0e9, end_time: 1.0e9}
+  imu:
+    active: false
+    start_time: 1.0e9
+    end_time:   1.0e9
+    type:       freeze
+    bias_value: 0.0
+    noise_sigma: 0.0
+  encoder:
+    active: false
+    start_time: 1.0e9
+    end_time:   1.0e9
+    type:       freeze
+    scale_factor: 1.0
+  steering: {active: false, start_time: 1.0e9, end_time: 1.0e9}
+  drive:    {active: false, start_time: 1.0e9, end_time: 1.0e9}
+  obstacle:
+    active: false
+    start_time: 1.0e9
+    end_time:   1.0e9
+    positions:  []
+
+  presets:
+    camera_loss:
+      camera:   {active: true, start_time: 5.0, end_time: 7.0}
+    lidar_loss:
+      lidar:    {active: true, start_time: 5.0, end_time: 7.0}
+    both_sensors:
+      camera:   {active: true, start_time: 5.0, end_time: 7.0}
+      lidar:    {active: true, start_time: 5.0, end_time: 7.0}
+    imu_freeze:
+      imu:      {active: true, start_time: 8.0, end_time: 10.0, type: freeze}
+    steering:
+      steering: {active: true, start_time: 6.0, end_time: 8.0}
+    cascade:
+      camera:   {active: true, start_time: 6.0,  end_time: 8.7}
+      lidar:    {active: true, start_time: 11.0, end_time: 13.8}
+      imu:      {active: true, start_time: 16.0, end_time: 17.3, type: freeze}
+      steering: {active: true, start_time: 23.8, end_time: 24.0}
+      obstacle:
+        active: true
+        start_time: 25.0
+        end_time:   1.0e9
+        positions:  [[0.5, 0.5]]
+    obstacle_on_track:
+      obstacle:
+        active: true
+        start_time: 0.0
+        end_time:   1.0e9
+        positions:  [[0.5, 0.5]]
+
+  # topics: provided by config/platforms/<platform>.yaml
